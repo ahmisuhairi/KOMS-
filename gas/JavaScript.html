@@ -1,0 +1,1510 @@
+<script>
+/**
+ * ============================================================
+ * KOMS — KEMAS Operative Management System
+ * Fail: JavaScript.html | AppOS Live Field Hub (Negeri Perlis)
+ * ============================================================
+ */
+
+// Pangkalan Data Utama (SSOT In-Memory State)
+var CLASSES = [];
+var STAFF = [];
+var STAFF_ASSIGNMENTS = [];
+var CLASS_ISSUES = [];
+var STATUS_BGN = [];
+var STATUS_TANAH = [];
+var JAWATAN = [];
+
+var currentModul = 'utama';
+var currentTheme = 'theme-dark';
+var dashExtraFilter = null;
+var staffExtraFilter = null;
+var mapTypeFilter = '';
+var komsMap = null;
+var komsMarkers = null;
+
+var PAR_NAMES = {
+  'P.001': 'P.001 Padang Besar',
+  'P.002': 'P.002 Kangar',
+  'P.003': 'P.003 Arau'
+};
+
+var DUN_BY_PAR = {
+  'P.001': [
+    { kod: 'N.01', nama: 'Titi Tinggi' }, { kod: 'N.02', nama: 'Beseri' },
+    { kod: 'N.03', nama: 'Chuping' }, { kod: 'N.04', nama: 'Mata Ayer' }, { kod: 'N.05', nama: 'Santan' }
+  ],
+  'P.002': [
+    { kod: 'N.06', nama: 'Bintong' }, { kod: 'N.07', nama: 'Sena' },
+    { kod: 'N.08', nama: 'Indera Kayangan' }, { kod: 'N.09', nama: 'Kuala Perlis' }, { kod: 'N.10', nama: 'Kayang' }
+  ],
+  'P.003': [
+    { kod: 'N.11', nama: 'Pauh' }, { kod: 'N.12', nama: 'Tambun Tulang' },
+    { kod: 'N.13', nama: 'Guar Sanji' }, { kod: 'N.14', nama: 'Simpang Empat' }, { kod: 'N.15', nama: 'Sanglang' }
+  ]
+};
+var ALL_DUN = Object.values(DUN_BY_PAR).flat();
+
+var DUN_COORDS = {
+  'N.01': [6.652, 100.228], 'N.02': [6.540, 100.228], 'N.03': [6.480, 100.280],
+  'N.04': [6.430, 100.270], 'N.05': [6.480, 100.220], 'N.06': [6.430, 100.200],
+  'N.07': [6.440, 100.180], 'N.08': [6.441, 100.198], 'N.09': [6.400, 100.130],
+  'N.10': [6.390, 100.180], 'N.11': [6.380, 100.270], 'N.12': [6.350, 100.250],
+  'N.13': [6.320, 100.280], 'N.14': [6.340, 100.200], 'N.15': [6.300, 100.200]
+};
+
+var CLASS_TYPE_BY_DIV = {
+  'PAK': ['Tabika', 'Taska'],
+  'PKEM': ['Jahitan', 'Masakan', 'Komputer', 'Dandanan DIri', 'Seni Tangan'],
+  'PKOM': ['Pembangunan Insan', 'Pusat Sumber', 'PKK', 'Ekonomi Desa']
+};
+var ALL_CLASS_TYPES = [
+  'Tabika', 'Taska', 'Jahitan', 'Masakan', 'Komputer',
+  'Pembangunan Insan', 'Pusat Sumber', 'PKK', 'Dandanan DIri', 'Seni Tangan', 'Ekonomi Desa'
+];
+
+var PIN_COLORS = {
+  'Tabika': '#3B82F6', 'Taska': '#F97316', 'Jahitan': '#D946EF', 'Masakan': '#EAB308',
+  'Komputer': '#22C55E', 'Pembangunan Insan': '#EF4444', 'Pusat Sumber': '#A855F7',
+  'PKK': '#FB7185', 'Dandanan DIri': '#2DD4BF', 'Dandanan Diri': '#2DD4BF',
+  'Seni Tangan': '#FACC15', 'Ekonomi Desa': '#06B6D4'
+};
+
+var POSITION_LABELS = {
+  'Jawatan 001': 'Pendidik Masyarakat TABIKA',
+  'Jawatan 002': 'Pendidik Masyarakat TASKA',
+  'Jawatan 003': 'Pemaju Masyarakat Pembangunan Insan',
+  'Jawatan 004': 'Pemaju Masyarakat Pusat Sumber',
+  'Jawatan 005': 'Pemaju Masyarakat Jahitan',
+  'Jawatan 006': 'Pemaju Masyarakat Masakan',
+  'Jawatan 007': 'Pemaju Masyarakat Dandanan Diri',
+  'Jawatan 008': 'Pemaju Masyarakat Seni Tangan',
+  'Jawatan 009': 'Pemaju Masyarakat Literasi Komputer',
+  'Jawatan 010': 'Pemaju Masyarakat Pendidikan Kesejahteraan Keluarga',
+  'Jawatan 011': 'Pemaju Masyarakat Ekonomi Desa'
+};
+
+// ==========================================
+// FUNGSI UTILITI
+// ==========================================
+function esc(t) {
+  return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+}
+function classIdKey(raw) {
+  if (!raw) return '';
+  var s = String(raw).trim();
+  return s.indexOf(':') >= 0 ? s.split(':')[0].trim() : s;
+}
+function shortPosition(code) {
+  if (!code) return '—';
+  var c = code.trim();
+  for (var i = 0; i < JAWATAN.length; i++) {
+    if (JAWATAN[i]['ID Jawatan'] === c && JAWATAN[i].Jawatan) return JAWATAN[i].Jawatan;
+  }
+  return POSITION_LABELS[c] || c;
+}
+function lookupStatusBgn(id) {
+  if (!id) return '—';
+  for (var i = 0; i < STATUS_BGN.length; i++) {
+    if (STATUS_BGN[i]['StatusBgn ID'] === id || STATUS_BGN[i].StatusBgnID === id) {
+      return STATUS_BGN[i].StatusBgn || id;
+    }
+  }
+  return id;
+}
+function lookupStatusTanah(id) {
+  if (!id) return '—';
+  for (var i = 0; i < STATUS_TANAH.length; i++) {
+    if (STATUS_TANAH[i]['StatusTanah ID'] === id || STATUS_TANAH[i].StatusTanahID === id) {
+      return STATUS_TANAH[i].StatusTanah || id;
+    }
+  }
+  return id;
+}
+function isAssignmentActive(a) {
+  var v = a.StatusPenugasan !== undefined ? a.StatusPenugasan : (a.StatusTugasan !== undefined ? a.StatusTugasan : a.Status);
+  if (v === true || v === 'TRUE' || v === 'True' || v === 'Aktif' || v === 1 || v === '1') return true;
+  if (v === false || v === 'FALSE' || v === 'False' || v === 'Tidak Aktif' || v === 0 || v === '0') return false;
+  return true;
+}
+function parseLatLng(loc) {
+  if (!loc) return null;
+  var m = String(loc).match(/(-?\d+\.?\d*)\s*[, ]\s*(-?\d+\.?\d*)/);
+  if (m) {
+    var lat = parseFloat(m[1]), lng = parseFloat(m[2]);
+    if (!isNaN(lat) && !isNaN(lng)) return [lat, lng];
+  }
+  return null;
+}
+function coordsForClass(c) {
+  var fromLoc = parseLatLng(c.Location);
+  if (fromLoc) return fromLoc;
+  var dun = String(c['Kod DUN'] || '').trim();
+  if (DUN_COORDS[dun]) return DUN_COORDS[dun];
+  return [6.444, 100.198];
+}
+function formatTahunOperasi(val) {
+  if (val === undefined || val === null || val === '') return '—';
+  var str = String(val).trim();
+  if (!str) return '—';
+  var clean = str.replace(/\.0+$/, '');
+  var num = parseFloat(clean);
+  if (!isNaN(num) && isFinite(num)) {
+    return Math.floor(num).toString();
+  }
+  return clean;
+}
+
+// Persist ke Apps Script atau local update
+function komsPersist(fnName, record, onOk, onFail) {
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (res && res.ok) { if (onOk) onOk(res); }
+        else { if (onFail) onFail((res && res.error) || 'Ralat simpan.'); }
+      })
+      .withFailureHandler(function(err) {
+        if (onFail) onFail(String(err && err.message || err));
+      })[fnName](record);
+    return true;
+  }
+  // Fallback luar GAS
+  if (onOk) onOk({ ok: true, localOnly: true });
+  return false;
+}
+
+// ==========================================
+// NAVIGASI & TEMA
+// ==========================================
+function tukarModul(id) {
+  id = id || 'utama';
+  currentModul = id;
+  document.querySelectorAll('.koms-section').forEach(function(s) { s.style.display = 'none'; });
+  document.querySelectorAll('.nav-tab, .bnav-item').forEach(function(b) { b.classList.remove('active'); });
+
+  var sec = document.getElementById('modul-' + id);
+  if (sec) sec.style.display = 'flex';
+  var tab = document.getElementById('tab-' + id);
+  if (tab) tab.classList.add('active');
+  var bnav = document.getElementById('bnav-' + id);
+  if (bnav) bnav.classList.add('active');
+
+  tutupSemuaModal();
+  if (id === 'utama') paparDashboard();
+  else if (id === 'kelas') applyKelasFilters();
+  else if (id === 'staff') applyStaffFilters();
+  else if (id === 'penugasan') paparPenugasan();
+  else if (id === 'kerosakan') paparKerosakan();
+  else if (id === 'peta') setTimeout(paparPetaLeaflet, 80);
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function tukarTema(t) {
+  currentTheme = t;
+  document.body.className = t;
+  try { localStorage.setItem('koms_theme', t); } catch (e) {}
+  tunjukToast('Tema Visual', 'Tema ditukar: ' + t);
+}
+
+function toggleDrawer(show) {
+  var el = document.getElementById('drawerHamburger');
+  if (el) {
+    if (show === false) el.classList.add('hidden');
+    else if (show === true) el.classList.remove('hidden');
+    else el.classList.toggle('hidden');
+  }
+}
+
+function tunjukToast(tajuk, mesej) {
+  var toast = document.getElementById('toastNotify');
+  if (!toast) return;
+  document.getElementById('toastTajuk').innerText = tajuk || 'KOMS';
+  document.getElementById('toastMesej').innerText = mesej || '';
+  toast.classList.add('show');
+  setTimeout(function() { toast.classList.remove('show'); }, 2800);
+}
+
+function tutupSemuaModal() {
+  ['modalKelas', 'modalEditKelas', 'modalStaff', 'modalEditStaff', 'modalIsu', 'modalEditIsu'].forEach(function(id) {
+    var m = document.getElementById(id);
+    if (m) m.classList.add('hidden');
+  });
+}
+
+// ==========================================
+// MODUL UTAMA (DASHBOARD)
+// ==========================================
+function paparDashboard() {
+  var totalPremis = CLASSES.length;
+  var totalStaff = STAFF.length;
+  var activeAssigns = STAFF_ASSIGNMENTS.filter(isAssignmentActive);
+  var openIssues = CLASS_ISSUES.filter(function(i) { return i.Status !== 'Selesai'; });
+
+  // Pengecaman premis berpenempatan
+  var assignedClassIds = {};
+  activeAssigns.forEach(function(a) {
+    var k = classIdKey(a.ClassID);
+    if (k) assignedClassIds[k] = 1;
+    if (a.ClassID) assignedClassIds[String(a.ClassID).trim()] = 1;
+  });
+
+  var kelasAdaStaf = 0;
+  for (var i = 0; i < CLASSES.length; i++) {
+    var cid = String(CLASSES[i].ClassID || '').trim();
+    if (assignedClassIds[cid] || assignedClassIds[classIdKey(cid)]) kelasAdaStaf++;
+  }
+  var kelasTiadaStaf = totalPremis - kelasAdaStaf;
+
+  // Bilangan pecahan bahagian
+  var pakN = 0, pkemN = 0, pkomN = 0;
+  CLASSES.forEach(function(c) {
+    if (c.DivisionID === 'PAK') pakN++;
+    else if (c.DivisionID === 'PKEM') pkemN++;
+    else if (c.DivisionID === 'PKOM') pkomN++;
+  });
+
+  // Pengecaman staf tiada penempatan kelas
+  var assignedStaffIds = {};
+  activeAssigns.forEach(function(a) {
+    if (a.StaffID) assignedStaffIds[String(a.StaffID).trim()] = 1;
+  });
+  var stafTiadaKelasCount = 0;
+  for (var sIdx = 0; sIdx < STAFF.length; sIdx++) {
+    var sid = String(STAFF[sIdx].StaffID || '').trim();
+    if (!assignedStaffIds[sid]) stafTiadaKelasCount++;
+  }
+
+  // KPI Texts
+  var elP = document.getElementById('kpiPremis'); if (elP) elP.textContent = totalPremis;
+  var elPSub = document.getElementById('kpiPremisSub'); if (elPSub) elPSub.textContent = 'PAK ' + pakN + ' • PKEM ' + pkemN + ' • PKOM ' + pkomN;
+  var elS = document.getElementById('kpiStaff'); if (elS) elS.textContent = totalStaff;
+  var elA = document.getElementById('kpiAssign'); if (elA) elA.textContent = activeAssigns.length;
+  var elSTK = document.getElementById('kpiStafTiadaKelasDash'); if (elSTK) elSTK.textContent = stafTiadaKelasCount;
+  var elSTK2 = document.getElementById('kpiStafTiadaKelas'); if (elSTK2) elSTK2.textContent = stafTiadaKelasCount;
+  var elKT = document.getElementById('kpiKelasTiadaStaf'); if (elKT) elKT.textContent = kelasTiadaStaf;
+  var elKA = document.getElementById('kpiKelasAdaStaf'); if (elKA) elKA.textContent = kelasAdaStaf;
+
+  // Status Bangunan Tiles (2 Kolom)
+  var bgnCounts = {};
+  CLASSES.forEach(function(c) {
+    var lab = lookupStatusBgn(c['Status Bangunan']);
+    bgnCounts[lab] = (bgnCounts[lab] || 0) + 1;
+  });
+  var bgnBox = document.getElementById('dashStatusBgn');
+  if (bgnBox) {
+    var bgnHtml = '';
+    Object.keys(bgnCounts).sort(function(a,b){ return bgnCounts[b] - bgnCounts[a]; }).forEach(function(k) {
+      bgnHtml += '<div class="appos-card-subtle dash-tile" style="padding: 10px;" onclick="tapisKelasDariDash(\'statusBgn\', \'' + esc(k) + '\')">' +
+        '<span class="appos-text-muted" style="font-size: 10px; display: block;">' + esc(k) + '</span>' +
+        '<b class="font-mono" style="font-size: 18px; color: var(--text-main);">' + bgnCounts[k] + '</b></div>';
+    });
+    bgnBox.innerHTML = bgnHtml;
+  }
+
+  // Status Tanah Tiles (2 Kolom)
+  var tanahCounts = {};
+  CLASSES.forEach(function(c) {
+    var lab = lookupStatusTanah(c['Status Milik Tanah']);
+    tanahCounts[lab] = (tanahCounts[lab] || 0) + 1;
+  });
+  var tanahBox = document.getElementById('dashStatusTanah');
+  if (tanahBox) {
+    var tanahHtml = '';
+    Object.keys(tanahCounts).sort(function(a,b){ return tanahCounts[b] - tanahCounts[a]; }).forEach(function(k) {
+      tanahHtml += '<div class="appos-card-subtle dash-tile" style="padding: 10px;" onclick="tapisKelasDariDash(\'statusTanah\', \'' + esc(k) + '\')">' +
+        '<span class="appos-text-muted" style="font-size: 10px; display: block;">' + esc(k) + '</span>' +
+        '<b class="font-mono" style="font-size: 18px; color: var(--text-main);">' + tanahCounts[k] + '</b></div>';
+    });
+    tanahBox.innerHTML = tanahHtml;
+  }
+
+  // Bahagian & Jenis Kelas
+  var bjBox = document.getElementById('dashBahagianJenis');
+  if (bjBox) {
+    var divs = [
+      { id: 'PAK', name: 'PAK — Pendidikan Awal Kanak-kanak', count: pakN, color: 'var(--blue-accent)', bg: 'rgba(59,130,246,0.15)', icon: 'fa-children', textColor: '#60A5FA' },
+      { id: 'PKEM', name: 'PKEM — Pendidikan Kemahiran', count: pkemN, color: 'var(--emerald-accent)', bg: 'rgba(16,185,129,0.15)', icon: 'fa-screwdriver-wrench', textColor: '#34D399' },
+      { id: 'PKOM', name: 'PKOM — Pembangunan Komuniti', count: pkomN, color: 'var(--amber-accent)', bg: 'rgba(245,158,11,0.15)', icon: 'fa-users-line', textColor: '#FBBF24' }
+    ];
+    var hBJ = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-bottom: 12px;">';
+    divs.forEach(function(d) {
+      hBJ += '<div class="appos-card hud-card clickable" style="padding: 12px; display: flex; align-items: center; justify-content: space-between; gap: 10px;" onclick="tapisKelasDariDash(\'division\', \'' + d.id + '\')">' +
+        '<div style="min-width: 0; flex: 1;">' +
+        '<span class="appos-text-muted" style="font-size: 9.5px; font-weight: 700; text-transform: uppercase; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">' + d.name + '</span>' +
+        '<b class="font-mono" style="font-size: 22px; color: ' + d.textColor + '; display: block; margin-top: 4px; line-height: 1;">' + d.count + ' <span style="font-size: 11px; font-weight: 400; color: var(--text-muted);">premis</span></b>' +
+        '</div>' +
+        '<div class="hud-icon-box" style="background: ' + d.bg + '; color: ' + d.color + '; width: 36px; height: 36px; font-size: 14px;"><i class="fa-solid ' + d.icon + '"></i></div></div>';
+    });
+    hBJ += '</div>';
+
+    // Jenis Kelas sub-grids
+    var classGroups = [
+      {
+        title: 'Kelas Pendidikan Awal Kanak-kanak',
+        titleColor: 'var(--blue-accent)',
+        iconTitle: 'fa-child',
+        numCols: 'repeat(auto-fit, minmax(180px, 1fr))',
+        items: [
+          { id: 'Tabika', name: 'Tabika', icon: 'fa-child-reaching', bg: 'rgba(59,130,246,0.15)', color: 'var(--blue-accent)', textColor: '#60A5FA' },
+          { id: 'Taska', name: 'Taska', icon: 'fa-baby', bg: 'rgba(59,130,246,0.15)', color: 'var(--blue-accent)', textColor: '#60A5FA' }
+        ]
+      },
+      {
+        title: 'Kelas Pendidikan Kemahiran',
+        titleColor: 'var(--emerald-accent)',
+        iconTitle: 'fa-gears',
+        numCols: 'repeat(auto-fit, minmax(150px, 1fr))',
+        items: [
+          { id: 'Jahitan', name: 'Jahitan', icon: 'fa-scissors', bg: 'rgba(16,185,129,0.15)', color: 'var(--emerald-accent)', textColor: '#34D399' },
+          { id: 'Masakan', name: 'Masakan', icon: 'fa-utensils', bg: 'rgba(16,185,129,0.15)', color: 'var(--emerald-accent)', textColor: '#34D399' },
+          { id: 'Komputer', name: 'Komputer', icon: 'fa-laptop', bg: 'rgba(16,185,129,0.15)', color: 'var(--emerald-accent)', textColor: '#34D399' },
+          { id: 'Dandanan DIri', name: 'Dandanan Diri', icon: 'fa-spray-can-sparkles', bg: 'rgba(16,185,129,0.15)', color: 'var(--emerald-accent)', textColor: '#34D399' },
+          { id: 'Seni Tangan', name: 'Seni Tangan', icon: 'fa-palette', bg: 'rgba(16,185,129,0.15)', color: 'var(--emerald-accent)', textColor: '#34D399' }
+        ]
+      },
+      {
+        title: 'Kelas Pembangunan Komuniti',
+        titleColor: 'var(--amber-accent)',
+        iconTitle: 'fa-users',
+        numCols: 'repeat(auto-fit, minmax(170px, 1fr))',
+        items: [
+          { id: 'Pembangunan Insan', name: 'Pembangunan Insan', icon: 'fa-hands-holding-child', bg: 'rgba(245,158,11,0.15)', color: 'var(--amber-accent)', textColor: '#FBBF24' },
+          { id: 'Pusat Sumber', name: 'Pusat Sumber', icon: 'fa-book-open', bg: 'rgba(245,158,11,0.15)', color: 'var(--amber-accent)', textColor: '#FBBF24' },
+          { id: 'PKK', name: 'PKK', icon: 'fa-people-roof', bg: 'rgba(245,158,11,0.15)', color: 'var(--amber-accent)', textColor: '#FBBF24' },
+          { id: 'Ekonomi Desa', name: 'Ekonomi Desa', icon: 'fa-store', bg: 'rgba(245,158,11,0.15)', color: 'var(--amber-accent)', textColor: '#FBBF24' }
+        ]
+      }
+    ];
+
+    classGroups.forEach(function(grp) {
+      hBJ += '<div style="font-size: 10px; font-weight: 800; color: ' + grp.titleColor + '; text-transform: uppercase; margin: 10px 0 6px; display: flex; align-items: center; gap: 6px;">' +
+        '<i class="fa-solid ' + grp.iconTitle + '"></i> ' + grp.title + '</div>';
+      hBJ += '<div style="display: grid; grid-template-columns: ' + grp.numCols + '; gap: 8px; margin-bottom: 10px;">';
+      grp.items.forEach(function(item) {
+        var cnt = CLASSES.filter(function(c) { return c.ClassTypeID === item.id; }).length;
+        hBJ += '<div class="appos-card hud-card clickable" style="padding: 10px 12px; display: flex; justify-content: space-between; align-items: center; gap: 8px;" onclick="tapisKelasDariDash(\'classType\', \'' + esc(item.id) + '\')">' +
+          '<div style="min-width: 0; flex: 1;">' +
+          '<span class="appos-text-muted" style="font-size: 9.5px; font-weight: 700; text-transform: uppercase; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">' + esc(item.name) + '</span>' +
+          '<b class="font-mono" style="font-size: 18px; color: ' + item.textColor + '; display: block; margin-top: 2px; line-height: 1;">' + cnt + '</b>' +
+          '</div>' +
+          '<div class="hud-icon-box" style="background: ' + item.bg + '; color: ' + item.color + '; width: 32px; height: 32px; font-size: 12px;"><i class="fa-solid ' + item.icon + '"></i></div></div>';
+      });
+      hBJ += '</div>';
+    });
+    bjBox.innerHTML = hBJ;
+  }
+
+  // Parlimen Kelas (3 Kolom)
+  var parBox = document.getElementById('dashParlimen');
+  if (parBox) {
+    var parHtml = '';
+    ['P.001', 'P.002', 'P.003'].forEach(function(pk) {
+      var cnt = CLASSES.filter(function(c) { return (c['Kod Parlimen'] || '').indexOf(pk) >= 0; }).length;
+      parHtml += '<div class="appos-card-subtle dash-tile" style="padding: 10px;" onclick="tapisKelasDariDash(\'parlimen\', \'' + pk + '\')">' +
+        '<span class="appos-text-muted" style="font-size: 10px; display: block;">' + PAR_NAMES[pk] + '</span>' +
+        '<b class="font-mono" style="font-size: 20px; color: var(--text-main);">' + cnt + '</b>' +
+        '<span style="font-size: 9.5px; color: var(--text-muted); display: block;">premis kelas</span></div>';
+    });
+    parBox.innerHTML = parHtml;
+  }
+
+  // Staff Parlimen (3 Kolom)
+  var spBox = document.getElementById('dashStaffParlimen');
+  if (spBox) {
+    var spHtml = '';
+    ['P.001', 'P.002', 'P.003'].forEach(function(pk) {
+      var cnt = STAFF.filter(function(s) { return (s.ParlimenID || '').indexOf(pk) >= 0; }).length;
+      spHtml += '<div class="appos-card-subtle dash-tile" style="padding: 10px;" onclick="tapisStaffDariDash(\'parlimen\', \'' + pk + '\')">' +
+        '<span class="appos-text-muted" style="font-size: 10px; display: block;">' + PAR_NAMES[pk] + '</span>' +
+        '<b class="font-mono" style="font-size: 20px; color: var(--text-main);">' + cnt + '</b>' +
+        '<span style="font-size: 9.5px; color: var(--text-muted); display: block;">kakitangan staf</span></div>';
+    });
+    spBox.innerHTML = spHtml;
+  }
+
+  // Status Lantikan
+  var nKontrak = STAFF.filter(function(s) { return String(s['Status Lantikan'] || '').toLowerCase() === 'kontrak'; }).length;
+  var nJskt = STAFF.filter(function(s) { return String(s['Status Lantikan'] || '').toLowerCase() === 'jskt'; }).length;
+  var elLK = document.getElementById('kpiLantikanKontrak'); if (elLK) elLK.textContent = nKontrak;
+  var elLJ = document.getElementById('kpiLantikanJSKT'); if (elLJ) elLJ.textContent = nJskt;
+}
+
+function tapisKelasDariDash(type, val) {
+  dashExtraFilter = { type: type, value: val };
+  tukarModul('kelas');
+}
+
+function tapisStaffDariDash(type, val) {
+  staffExtraFilter = { type: type, value: val };
+  tukarModul('staff');
+}
+
+function tapisKelasTanpaStaf() {
+  dashExtraFilter = { type: 'noStaff' };
+  tukarModul('kelas');
+}
+
+function tapisKelasAdaStaf() {
+  dashExtraFilter = { type: 'hasStaff' };
+  tukarModul('kelas');
+}
+
+function clearKelasExtraFilter() {
+  dashExtraFilter = null;
+  var b = document.getElementById('kelasFilterBanner');
+  if (b) b.classList.add('hidden');
+  applyKelasFilters();
+}
+
+function tapisStaffLantikan(st) {
+  staffExtraFilter = { type: 'lantikan', value: st };
+  tukarModul('staff');
+}
+
+function tapisStafTiadaKelas() {
+  staffExtraFilter = { type: 'noClass' };
+  applyStaffFilters();
+}
+
+function tapisStafSemua() {
+  staffExtraFilter = null;
+  applyStaffFilters();
+}
+
+// ==========================================
+// MODUL KELAS
+// ==========================================
+function onDivisionChange() {
+  var div = (document.getElementById('filterDivision') || {}).value || '';
+  var types = div && CLASS_TYPE_BY_DIV[div] ? CLASS_TYPE_BY_DIV[div] : ALL_CLASS_TYPES;
+  var sel = document.getElementById('filterClassType');
+  if (sel) {
+    var h = '<option value="">Semua Jenis Kelas</option>';
+    types.forEach(function(t, idx) {
+      var d = t === 'Dandanan DIri' ? 'Dandanan Diri' : t;
+      h += '<option key="ct-' + idx + '" value="' + esc(t) + '">' + esc(d) + '</option>';
+    });
+    sel.innerHTML = h;
+  }
+  applyKelasFilters();
+}
+
+function onKelasParlimenChange() {
+  var par = (document.getElementById('filterParlimen') || {}).value || '';
+  var duns = par && DUN_BY_PAR[par] ? DUN_BY_PAR[par] : ALL_DUN;
+  var sel = document.getElementById('filterDun');
+  if (sel) {
+    var h = '<option value="">Semua DUN</option>';
+    duns.forEach(function(d, idx) {
+      h += '<option key="kdun-' + idx + '" value="' + esc(d.kod) + '">' + esc(d.kod + ' ' + d.nama) + '</option>';
+    });
+    sel.innerHTML = h;
+  }
+  applyKelasFilters();
+}
+
+function initStatusTanahFilter() {
+  var sel = document.getElementById('filterStatusTanah');
+  if (!sel) return;
+  var prevVal = sel.value;
+  var h = '<option value="">Semua Status Tanah</option>';
+  var seen = {};
+  var items = [];
+  if (STATUS_TANAH && STATUS_TANAH.length) {
+    STATUS_TANAH.forEach(function(item) {
+      var name = item.StatusTanah || item['StatusTanah ID'] || item.StatusTanahID;
+      if (name && !seen[name]) {
+        seen[name] = true;
+        items.push(name);
+      }
+    });
+  }
+  CLASSES.forEach(function(c) {
+    var name = lookupStatusTanah(c['Status Milik Tanah']);
+    if (name && name !== '—' && !seen[name]) {
+      seen[name] = true;
+      items.push(name);
+    }
+  });
+  items.sort();
+  items.forEach(function(name, idx) {
+    h += '<option key="st-opt-' + idx + '" value="' + esc(name) + '">' + esc(name) + '</option>';
+  });
+  sel.innerHTML = h;
+  if (prevVal) sel.value = prevVal;
+}
+
+function applyKelasFilters() {
+  var div = (document.getElementById('filterDivision') || {}).value || '';
+  var ct = (document.getElementById('filterClassType') || {}).value || '';
+  var par = (document.getElementById('filterParlimen') || {}).value || '';
+  var dun = (document.getElementById('filterDun') || {}).value || '';
+  var st = (document.getElementById('filterStatusTanah') || {}).value || '';
+
+  // Active assignment set
+  var activeAssigns = STAFF_ASSIGNMENTS.filter(isAssignmentActive);
+  var assignedClassIds = {};
+  activeAssigns.forEach(function(a) {
+    var k = classIdKey(a.ClassID);
+    if (k) assignedClassIds[k] = 1;
+    if (a.ClassID) assignedClassIds[String(a.ClassID).trim()] = 1;
+  });
+
+  var list = CLASSES.filter(function(c) {
+    if (div && c.DivisionID !== div) return false;
+    if (ct && c.ClassTypeID !== ct) return false;
+    if (par && (c['Kod Parlimen'] || '').indexOf(par) < 0) return false;
+    if (dun && (c['Kod DUN'] || '').indexOf(dun) < 0) return false;
+
+    // Status Milik Tanah filter
+    if (st) {
+      var resolvedTanah = lookupStatusTanah(c['Status Milik Tanah']);
+      var rawTanah = c['Status Milik Tanah'] || '';
+      if (resolvedTanah !== st && rawTanah !== st) return false;
+    }
+
+    if (dashExtraFilter) {
+      var val = dashExtraFilter.value;
+      if (dashExtraFilter.type === 'statusBgn') {
+        if (lookupStatusBgn(c['Status Bangunan']) !== val) return false;
+      } else if (dashExtraFilter.type === 'statusTanah') {
+        if (lookupStatusTanah(c['Status Milik Tanah']) !== val) return false;
+      } else if (dashExtraFilter.type === 'division') {
+        if (c.DivisionID !== val) return false;
+      } else if (dashExtraFilter.type === 'classType') {
+        if (c.ClassTypeID !== val) return false;
+      } else if (dashExtraFilter.type === 'parlimen') {
+        if ((c['Kod Parlimen'] || '').indexOf(val) < 0) return false;
+      } else if (dashExtraFilter.type === 'noStaff') {
+        var cid = String(c.ClassID || '').trim();
+        if (assignedClassIds[cid] || assignedClassIds[classIdKey(cid)]) return false;
+      } else if (dashExtraFilter.type === 'hasStaff') {
+        var cid2 = String(c.ClassID || '').trim();
+        if (!assignedClassIds[cid2] && !assignedClassIds[classIdKey(cid2)]) return false;
+      }
+    }
+    return true;
+  });
+
+  // Extra filter banner
+  var banner = document.getElementById('kelasFilterBanner');
+  var bTxt = document.getElementById('kelasFilterBannerText');
+  if (banner && bTxt) {
+    if (dashExtraFilter) {
+      banner.classList.remove('hidden');
+      var label = dashExtraFilter.type === 'noStaff' ? 'Kelas Tiada Staf Penempatan'
+        : dashExtraFilter.type === 'hasStaff' ? 'Kelas Sudah Ditempatkan Staf'
+        : 'Penapis: ' + (dashExtraFilter.value || '');
+      bTxt.textContent = label;
+    } else {
+      banner.classList.add('hidden');
+    }
+  }
+
+  var rc = document.getElementById('rekodCount');
+  if (rc) rc.textContent = list.length + ' rekod';
+
+  // Desktop Table
+  var tb = document.getElementById('jadualKelasBody');
+  if (tb) {
+    var h = '';
+    list.forEach(function(c, idx) {
+      h += '<tr key="tr-' + c.ClassID + '-' + idx + '" onclick="bukaModalKelas(\'' + esc(c.ClassID) + '\', \'' + esc(c.ClassName) + '\')" style="cursor: pointer;">' +
+        '<td class="font-mono" style="color: var(--accent-color); font-weight: 700;">' + esc(c.ClassID) + '</td>' +
+        '<td><b style="color: #fff;" class="hover:underline">' + esc(c.ClassName) + '</b><br><span class="appos-text-muted" style="font-size: 10px;">' + esc(c.Address || '—') + '</span></td>' +
+        '<td><span class="badge-status" style="background: rgba(59,130,246,0.15); color: var(--blue-accent);">' + esc(c.ClassTypeID || '') + '</span></td>' +
+        '<td class="font-mono">' + esc(c['Kod Parlimen'] || '') + '</td>' +
+        '<td class="font-mono">' + esc(c['Kod DUN'] || '') + '</td>' +
+        '<td><span class="badge-status badge-live">' + esc(lookupStatusBgn(c['Status Bangunan'])) + '</span></td>' +
+        '<td><span class="badge-status" style="background: rgba(197,160,89,0.15); color: var(--accent-color);">' + esc(lookupStatusTanah(c['Status Milik Tanah'])) + '</span></td></tr>';
+    });
+    tb.innerHTML = h || '<tr><td colspan="7" class="appos-text-muted" style="text-align: center; padding: 24px;">Tiada premis kelas dijumpai.</td></tr>';
+  }
+
+  // Mobile Cards
+  var cb = document.getElementById('kadKelasList');
+  if (cb) {
+    var hc = '';
+    list.forEach(function(c, idx) {
+      hc += '<div key="card-' + c.ClassID + '-' + idx + '" class="list-card" onclick="bukaModalKelas(\'' + esc(c.ClassID) + '\', \'' + esc(c.ClassName) + '\')">' +
+        '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">' +
+        '<span class="lc-id">' + esc(c.ClassID) + '</span>' +
+        '<span class="badge-status" style="background: rgba(59,130,246,0.15); color: var(--blue-accent);">' + esc(c.ClassTypeID || '') + '</span></div>' +
+        '<div class="lc-title">' + esc(c.ClassName) + '</div>' +
+        '<div class="lc-meta"><span>' + esc(c['Kod DUN'] || '') + '</span><span>' + esc(lookupStatusBgn(c['Status Bangunan'])) + '</span><span style="color: var(--accent-color);">' + esc(lookupStatusTanah(c['Status Milik Tanah'])) + '</span></div></div>';
+    });
+    cb.innerHTML = hc || '<div class="empty-state">Tiada premis kelas dijumpai.</div>';
+  }
+}
+
+// Modal Dossier Kelas
+function bukaModalKelas(classId, className) {
+  var c = null;
+  for (var i = 0; i < CLASSES.length; i++) {
+    if (CLASSES[i].ClassID === classId) {
+      if (className && CLASSES[i].ClassName === className) { c = CLASSES[i]; break; }
+      if (!c) c = CLASSES[i];
+    }
+  }
+  if (!c) { tunjukToast('Ralat', 'Premis tidak dijumpai.'); return; }
+
+  document.getElementById('modalKelasBadge').textContent = c.ClassID;
+  document.getElementById('modalKelasTitle').textContent = c.ClassName;
+
+  var cid = classIdKey(c.ClassID);
+  var classAssigns = STAFF_ASSIGNMENTS.filter(function(a) {
+    return classIdKey(a.ClassID) === cid || a.ClassID === c.ClassID || String(a.ClassID).indexOf(c.ClassID) >= 0;
+  });
+  var classIssues = CLASS_ISSUES.filter(function(i) {
+    return classIdKey(i.ClassID) === cid || String(i.ClassID).indexOf(c.ClassID) >= 0;
+  });
+
+  var coords = coordsForClass(c);
+  var lat = coords[0], lng = coords[1];
+  var osmUrl = 'https://www.openstreetmap.org/export/embed.html?bbox=' + (lng - 0.015) + '%2C' + (lat - 0.015) + '%2C' + (lng + 0.015) + '%2C' + (lat + 0.015) + '&layer=mapnik&marker=' + lat + '%2C' + lng;
+
+  var h = '<div style="display: flex; justify-content: flex-end; margin-bottom: 12px; gap: 8px;">' +
+    '<button type="button" class="btn-action btn-gold" onclick="bukaEditKelas(\'' + esc(c.ClassID) + '\', \'' + esc(c.ClassName) + '\')"><i class="fa-solid fa-pen-to-square"></i> Edit Premis</button>' +
+    '<button type="button" class="btn-action" onclick="bukaBorangIsuDariKelas(\'' + esc(c.ClassID) + '\')"><i class="fa-solid fa-wrench"></i> Lapor Isu</button></div>';
+
+  h += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-bottom: 14px;">';
+  
+  // Kolom Kiri
+  h += '<div class="appos-card-subtle" style="padding: 12px; display: flex; flex-direction: column; gap: 8px;">' +
+    '<div style="font-size: 10px; font-weight: 800; color: var(--accent-color); text-transform: uppercase;">Maklumat Pentadbiran</div>' +
+    '<div><span class="appos-text-muted" style="font-size: 10px;">Bahagian / Jenis</span><br><b>' + esc(c.DivisionID || '') + ' • ' + esc(c.ClassTypeID || '') + '</b></div>' +
+    '<div><span class="appos-text-muted" style="font-size: 10px;">Parlimen / DUN</span><br><b>' + esc(c.Parlimen || c['Kod Parlimen'] || '—') + ' • ' + esc(c.DUN || c['Kod DUN'] || '—') + '</b></div>' +
+    '<div><span class="appos-text-muted" style="font-size: 10px;">Status Bangunan</span><br><b>' + esc(lookupStatusBgn(c['Status Bangunan'])) + '</b></div>' +
+    '<div><span class="appos-text-muted" style="font-size: 10px;">Status Milik Tanah</span><br><b>' + esc(lookupStatusTanah(c['Status Milik Tanah'])) + '</b></div>' +
+    '<div><span class="appos-text-muted" style="font-size: 10px;">Tahun Mula / Masa Operasi</span><br><b>' + esc(formatTahunOperasi(c['Tahun Mula Operasi'])) + ' • ' + esc(c['Masa Operasi'] || '8.00 PG - 5.00 PTG') + '</b></div></div>';
+
+  // Kolom Kanan (OSM Map)
+  h += '<div class="appos-card-subtle" style="padding: 12px; display: flex; flex-direction: column; gap: 6px;">' +
+    '<div style="display: flex; justify-content: space-between; align-items: center;">' +
+    '<span style="font-size: 10px; font-weight: 800; color: var(--accent-color); text-transform: uppercase;">Lokasi Spatial</span>' +
+    '<span class="font-mono appos-text-muted" style="font-size: 10px;">' + lat.toFixed(4) + ', ' + lng.toFixed(4) + '</span></div>' +
+    '<div style="width: 100%; height: 130px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border-color);"><iframe src="' + osmUrl + '" style="width: 100%; height: 100%; border: none;"></iframe></div>' +
+    '<p class="appos-text-muted" style="font-size: 10.5px; margin-top: 4px;"><b>Alamat:</b> ' + esc(c.Address || '—') + '</p>' +
+    '<div style="border-top: 1px solid var(--border-color); padding-top: 6px; margin-top: 2px;">' +
+    '<span style="font-size: 9.5px; font-weight: 700; color: var(--accent-color); text-transform: uppercase; display: block; margin-bottom: 4px;">Buka Di Aplikasi Peta:</span>' +
+    '<div style="display: flex; gap: 4px; flex-wrap: wrap;">' +
+    '<a href="https://www.google.com/maps/search/?api=1&query=' + lat + ',' + lng + '" target="_blank" class="btn-action text-xs" style="padding: 4px 7px; font-size: 10px;"><i class="fa-brands fa-google" style="color: #3B82F6;"></i> Google Maps</a>' +
+    '<a href="https://maps.apple.com/?q=' + encodeURIComponent(c.ClassName || '') + '&ll=' + lat + ',' + lng + '" target="_blank" class="btn-action text-xs" style="padding: 4px 7px; font-size: 10px;"><i class="fa-brands fa-apple"></i> Apple Maps</a>' +
+    '<a href="https://earth.google.com/web/search/' + lat + ',' + lng + '" target="_blank" class="btn-action text-xs" style="padding: 4px 7px; font-size: 10px;"><i class="fa-solid fa-earth-asia" style="color: #10B981;"></i> Google Earth</a>' +
+    '</div></div></div>';
+
+  h += '</div>';
+
+  // Penugasan
+  h += '<div style="margin-bottom: 14px;"><div style="font-size: 11px; font-weight: 800; color: var(--accent-color); text-transform: uppercase; margin-bottom: 6px;"><i class="fa-solid fa-users"></i> Penugasan Kakitangan (' + classAssigns.length + ')</div>';
+  if (!classAssigns.length) {
+    h += '<p class="appos-text-muted" style="font-size: 11px;">Tiada penugasan aktif.</p>';
+  } else {
+    classAssigns.forEach(function(a, idx) {
+      var st = null;
+      for (var sIdx = 0; sIdx < STAFF.length; sIdx++) {
+        if (STAFF[sIdx].StaffID === a.StaffID) { st = STAFF[sIdx]; break; }
+      }
+      var sName = st ? st.StaffName : a.StaffID;
+      var isAct = isAssignmentActive(a);
+      h += '<div key="asg-' + a.AssignmentID + '-' + idx + '" class="appos-card-subtle" style="padding: 8px 10px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">' +
+        '<div><b style="color: #fff;">' + esc(sName) + '</b><span class="appos-text-muted" style="display: block; font-size: 10px;">' + esc(a.Peranan || 'Penugasan') + ' • ' + esc(a.AssignmentDate || '') + '</span></div>' +
+        '<span class="badge-status ' + (isAct ? 'badge-live' : '') + '">' + (isAct ? 'Aktif' : 'Tamat') + '</span></div>';
+    });
+  }
+  h += '</div>';
+
+  // Isu
+  h += '<div style="margin-bottom: 14px;"><div style="font-size: 11px; font-weight: 800; color: var(--accent-color); text-transform: uppercase; margin-bottom: 6px;"><i class="fa-solid fa-wrench"></i> Isu Kerosakan (' + classIssues.length + ')</div>';
+  if (!classIssues.length) {
+    h += '<p class="appos-text-muted" style="font-size: 11px;">Tiada rekod isu kerosakan.</p>';
+  } else {
+    classIssues.forEach(function(iss, idx) {
+      h += '<div key="iss-' + iss.IssueID + '-' + idx + '" class="appos-card-subtle" style="padding: 8px 10px; margin-bottom: 6px; cursor: pointer;" onclick="tutupModalKelas(); bukaModalIsu(\'' + esc(iss.IssueID) + '\')">' +
+        '<div style="display: flex; justify-content: space-between;"><b style="color: #fff;">' + esc(iss.IssueDescription) + '</b><span class="badge-status" style="background: rgba(244,63,94,0.15); color: var(--rose-accent);">' + esc(iss.Status) + '</span></div>' +
+        '<span class="appos-text-muted" style="font-size: 10px;">' + esc(iss.Severity) + ' • ' + esc(iss.DateReported || '') + '</span></div>';
+    });
+  }
+  h += '</div>';
+
+  // 4 Galeri Premis
+  h += '<div><div style="font-size: 11px; font-weight: 800; color: var(--accent-color); text-transform: uppercase; margin-bottom: 6px;"><i class="fa-regular fa-images"></i> Galeri Premis (1080x720)</div>';
+  h += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">';
+  [
+    { t: 'Hadapan Premis', f: 'Class Image 1' },
+    { t: 'Ruang Dalam', f: 'Class Image 2' },
+    { t: 'Papan Tanda / Warta', f: 'Class Image 3' },
+    { t: 'Kemudahan', f: 'Class Image 4' }
+  ].forEach(function(imgItem) {
+    var url = c[imgItem.f];
+    if (url) {
+      h += '<div class="appos-card-subtle" style="padding: 6px; text-align: center;"><img class="galeri-premis-img" src="' + esc(url) + '" alt="' + esc(imgItem.t) + '" onerror="this.style.display=\'none\'"><span class="appos-text-muted" style="font-size: 9.5px; display: block; margin-top: 4px;">' + imgItem.t + '</span></div>';
+    } else {
+      h += '<div class="img-slot"><i class="fa-regular fa-image" style="font-size: 22px; opacity: 0.4;"></i><span style="font-size: 11px; color: var(--text-muted);">' + imgItem.t + '</span><span class="font-mono" style="font-size: 9px; color: var(--accent-color);">' + imgItem.f + '</span></div>';
+    }
+  });
+  h += '</div></div>';
+
+  document.getElementById('modalKelasBody').innerHTML = h;
+  document.getElementById('modalKelas').classList.remove('hidden');
+}
+function tutupModalKelas() {
+  var m = document.getElementById('modalKelas');
+  if (m) m.classList.add('hidden');
+}
+
+// ==========================================
+// MODUL STAFF
+// ==========================================
+function applyStaffFilters() {
+  var div = (document.getElementById('filterStaffDiv') || {}).value || '';
+  var role = (document.getElementById('filterStaffRole') || {}).value || '';
+  var st = (document.getElementById('filterStaffStatus') || {}).value || '';
+
+  // Staf yang ada assignment aktif
+  var activeAssigns = STAFF_ASSIGNMENTS.filter(isAssignmentActive);
+  var assignedStaffIds = {};
+  activeAssigns.forEach(function(a) {
+    if (a.StaffID) assignedStaffIds[String(a.StaffID).trim()] = 1;
+  });
+
+  var unassignedCount = STAFF.filter(function(s) {
+    return !assignedStaffIds[String(s.StaffID || '').trim()];
+  }).length;
+  var elSTK = document.getElementById('kpiStafTiadaKelas');
+  if (elSTK) elSTK.textContent = unassignedCount;
+
+  var list = STAFF.filter(function(s) {
+    if (div && s.DivisionID !== div) return false;
+    if (role && s.Position !== role) return false;
+    if (st && s['Status Lantikan'] !== st) return false;
+
+    if (staffExtraFilter) {
+      if (staffExtraFilter.type === 'noClass') {
+        if (assignedStaffIds[String(s.StaffID || '').trim()]) return false;
+      } else if (staffExtraFilter.type === 'parlimen') {
+        if ((s.ParlimenID || '').indexOf(staffExtraFilter.value) < 0) return false;
+      } else if (staffExtraFilter.type === 'lantikan') {
+        if (String(s['Status Lantikan'] || '').toLowerCase() !== String(staffExtraFilter.value).toLowerCase()) return false;
+      }
+    }
+    return true;
+  });
+
+  var countEl = document.getElementById('staffCount');
+  if (countEl) countEl.textContent = list.length + ' rekod';
+
+  // Desktop Table
+  var tb = document.getElementById('jadualStaffBody');
+  if (tb) {
+    var h = '';
+    list.forEach(function(s, idx) {
+      h += '<tr key="stf-tr-' + s.StaffID + '-' + idx + '" onclick="bukaModalStaff(\'' + esc(s.StaffID) + '\')" style="cursor: pointer;">' +
+        '<td class="font-mono" style="color: var(--accent-color); font-weight: 700;">' + esc(s.StaffID) + '</td>' +
+        '<td><b style="color: #fff;" class="hover:underline">' + esc(s.StaffName) + '</b></td>' +
+        '<td>' + esc(shortPosition(s.Position)) + '</td>' +
+        '<td>' + esc(s.DivisionID || '—') + '</td>' +
+        '<td class="font-mono">' + esc(s.ParlimenID || '—') + '</td>' +
+        '<td><span class="badge-status ' + (s['Status Lantikan'] === 'JSKT' ? 'bg-blue-500/20 text-blue-400' : 'bg-amber-500/20 text-amber-400') + '">' + esc(s['Status Lantikan'] || '—') + '</span></td></tr>';
+    });
+    tb.innerHTML = h || '<tr><td colspan="6" class="appos-text-muted" style="text-align: center; padding: 24px;">Tiada kakitangan staf dijumpai.</td></tr>';
+  }
+
+  // Mobile Cards
+  var cb = document.getElementById('kadStaffList');
+  if (cb) {
+    var hc = '';
+    list.forEach(function(s, idx) {
+      hc += '<div key="stf-card-' + s.StaffID + '-' + idx + '" class="list-card" onclick="bukaModalStaff(\'' + esc(s.StaffID) + '\')">' +
+        '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">' +
+        '<span class="lc-id">' + esc(s.StaffID) + '</span>' +
+        '<span class="badge-status ' + (s['Status Lantikan'] === 'JSKT' ? 'bg-blue-500/20 text-blue-400' : 'bg-amber-500/20 text-amber-400') + '">' + esc(s['Status Lantikan'] || '—') + '</span></div>' +
+        '<div class="lc-title">' + esc(s.StaffName) + '</div>' +
+        '<div class="lc-meta"><span>' + esc(shortPosition(s.Position)) + '</span><span>' + esc(s.DivisionID || '') + '</span></div></div>';
+    });
+    cb.innerHTML = hc || '<div class="empty-state">Tiada kakitangan staf dijumpai.</div>';
+  }
+}
+
+// Modal Detail Staff
+function bukaModalStaff(staffId) {
+  var s = null;
+  for (var i = 0; i < STAFF.length; i++) {
+    if (STAFF[i].StaffID === staffId) { s = STAFF[i]; break; }
+  }
+  if (!s) { tunjukToast('Ralat', 'Staf tidak dijumpai.'); return; }
+
+  document.getElementById('modalStaffBadge').textContent = s.StaffID;
+  document.getElementById('modalStaffTitle').textContent = s.StaffName;
+
+  var staffAssigns = STAFF_ASSIGNMENTS.filter(function(a) { return a.StaffID === s.StaffID; });
+  var cleanPhone = (s.PhoneNumber || '').replace(/[^\d]/g, '');
+  var waPhone = cleanPhone.indexOf('0') === 0 ? '6' + cleanPhone : cleanPhone;
+
+  var h = '<div style="display: flex; justify-content: flex-end; margin-bottom: 12px;">' +
+    '<button type="button" class="btn-action btn-gold" onclick="bukaEditStaff(\'' + esc(s.StaffID) + '\')"><i class="fa-solid fa-pen-to-square"></i> Edit Maklumat Staf</button></div>';
+
+  h += '<div style="display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start; margin-bottom: 14px;">';
+  
+  // Gambar Profil
+  if (s['Gambar Profil']) {
+    h += '<img src="' + esc(s['Gambar Profil']) + '" style="width: 100px; height: 100px; object-fit: cover; border-radius: 12px; border: 1px solid var(--border-color);">';
+  } else {
+    h += '<div style="width: 100px; height: 100px; border-radius: 12px; border: 1px dashed var(--border-color); display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--bg-card-subtle);"><i class="fa-solid fa-user" style="font-size: 28px; opacity: 0.4;"></i><span style="font-size: 9px; margin-top: 4px;">Tiada Gambar</span></div>';
+  }
+
+  // Butiran Peribadi
+  h += '<div style="flex: 1; min-width: 200px; font-size: 12px; display: flex; flex-direction: column; gap: 6px;">' +
+    '<div><span class="appos-text-muted" style="font-size: 10px;">Jawatan</span><br><b>' + esc(shortPosition(s.Position)) + '</b> <span class="font-mono text-muted">(' + esc(s.Position || '') + ')</span></div>' +
+    '<div><span class="appos-text-muted" style="font-size: 10px;">Bahagian / Jenis</span><br><b>' + esc(s.DivisionID || '—') + ' • ' + esc(s.ClassTypeID || '—') + '</b></div>' +
+    '<div><span class="appos-text-muted" style="font-size: 10px;">No. Kad Pengenalan</span><br><b class="font-mono">' + esc(s.IC_Number || '—') + '</b></div>' +
+    '<div><span class="appos-text-muted" style="font-size: 10px;">Tarikh Lapor Diri</span><br><b>' + esc(s.DateJoined || '—') + '</b></div></div>';
+
+  h += '</div>';
+
+  // Butang Hubungi
+  h += '<div class="appos-card-subtle" style="padding: 10px; margin-bottom: 14px; display: flex; flex-wrap: wrap; gap: 8px;">';
+  if (s.PhoneNumber) {
+    h += '<a href="tel:' + esc(s.PhoneNumber) + '" class="btn-action text-xs"><i class="fa-solid fa-phone" style="color: var(--emerald-accent);"></i> ' + esc(s.PhoneNumber) + '</a>';
+    h += '<a href="https://wa.me/' + esc(waPhone) + '" target="_blank" class="btn-action text-xs" style="background: rgba(16,185,129,0.2); color: #34D399;"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a>';
+  }
+  if (s.Email) {
+    h += '<a href="mailto:' + esc(s.Email) + '" class="btn-action text-xs"><i class="fa-solid fa-envelope" style="color: var(--blue-accent);"></i> ' + esc(s.Email) + '</a>';
+  }
+  h += '</div>';
+
+  // Senarai Penugasan Kelas
+  h += '<div><div style="font-size: 11px; font-weight: 800; color: var(--accent-color); text-transform: uppercase; margin-bottom: 6px;"><i class="fa-solid fa-school"></i> Penempatan Kelas Premis (' + staffAssigns.length + ')</div>';
+  if (!staffAssigns.length) {
+    h += '<p class="appos-text-muted" style="font-size: 11px; padding: 10px; border: 1px dashed var(--border-color); border-radius: 8px; text-align: center;">Tiada rekod penempatan kelas aktif.</p>';
+  } else {
+    staffAssigns.forEach(function(a, idx) {
+      var isAct = isAssignmentActive(a);
+      var cName = a.ClassID;
+      for (var cIdx = 0; cIdx < CLASSES.length; cIdx++) {
+        if (CLASSES[cIdx].ClassID === a.ClassID || classIdKey(CLASSES[cIdx].ClassID) === classIdKey(a.ClassID)) {
+          cName = CLASSES[cIdx].ClassName;
+          break;
+        }
+      }
+      h += '<div key="stf-asg-' + a.AssignmentID + '-' + idx + '" class="appos-card-subtle" style="padding: 10px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">' +
+        '<div><b style="color: #fff;">' + esc(cName) + '</b><span class="appos-text-muted" style="display: block; font-size: 10px;">' + esc(a.Peranan || 'Penugasan') + ' • ' + esc(a.AssignmentDate || '') + '</span></div>' +
+        '<span class="badge-status ' + (isAct ? 'badge-live' : '') + '">' + (isAct ? 'Aktif' : 'Tamat') + '</span></div>';
+    });
+  }
+  h += '</div>';
+
+  document.getElementById('modalStaffBody').innerHTML = h;
+  document.getElementById('modalStaff').classList.remove('hidden');
+}
+function tutupModalStaff() {
+  var m = document.getElementById('modalStaff');
+  if (m) m.classList.add('hidden');
+}
+
+// ==========================================
+// MODUL PENUGASAN (STAFF ASSIGNMENTS)
+// ==========================================
+function toggleFormPenugasan(show) {
+  var f = document.getElementById('formPenugasan');
+  if (!f) return;
+  if (show === false) f.classList.add('hidden');
+  else if (show === true) f.classList.remove('hidden');
+  else f.classList.toggle('hidden');
+
+  if (!f.classList.contains('hidden')) {
+    // Populate dropdowns
+    var ss = document.getElementById('asgStaff');
+    if (ss) {
+      var hs = '<option value="">— Pilih Kakitangan —</option>';
+      STAFF.forEach(function(s, idx) {
+        hs += '<option key="asg-s-' + idx + '" value="' + esc(s.StaffID) + '">' + esc(s.StaffName) + ' (' + esc(s.StaffID) + ')</option>';
+      });
+      ss.innerHTML = hs;
+    }
+    var sc = document.getElementById('asgClass');
+    if (sc) {
+      var hc = '<option value="">— Pilih Premis Kelas —</option>';
+      CLASSES.forEach(function(c, idx) {
+        hc += '<option key="asg-c-' + idx + '" value="' + esc(c.ClassID) + '">' + esc(c.ClassName) + ' (' + esc(c.ClassID) + ')</option>';
+      });
+      sc.innerHTML = hc;
+    }
+  }
+}
+
+function simpanPenugasan() {
+  var sId = (document.getElementById('asgStaff') || {}).value;
+  var cId = (document.getElementById('asgClass') || {}).value;
+  var peranan = (document.getElementById('asgPeranan') || {}).value || 'Pendidik Masyarakat';
+
+  if (!sId || !cId) {
+    tunjukToast('Ralat', 'Sila pilih staf dan premis kelas.');
+    return;
+  }
+
+  var newAsg = {
+    AssignmentID: 'ASN-' + Date.now().toString(36).toUpperCase(),
+    StaffID: sId,
+    ClassID: cId,
+    Peranan: peranan,
+    AssignmentDate: new Date().toISOString().slice(0, 19).replace('T', ' '),
+    StatusPenugasan: 'TRUE',
+    StatusTugasan: 'Aktif'
+  };
+
+  STAFF_ASSIGNMENTS.unshift(newAsg);
+  toggleFormPenugasan(false);
+  paparPenugasan();
+  paparDashboard();
+
+  komsPersist('upsertAssignment', newAsg, function() {
+    tunjukToast('Penugasan', 'Disimpan ke Google Sheet.');
+  }, function(err) {
+    tunjukToast('Penugasan', 'Disimpan (Sesi Sahaja): ' + err);
+  });
+}
+
+function setStatusPenugasan(asgId, status) {
+  for (var i = 0; i < STAFF_ASSIGNMENTS.length; i++) {
+    if (STAFF_ASSIGNMENTS[i].AssignmentID === asgId) {
+      var isAct = status === 'TRUE' || status === 'Aktif';
+      STAFF_ASSIGNMENTS[i].StatusPenugasan = isAct ? 'TRUE' : 'FALSE';
+      STAFF_ASSIGNMENTS[i].StatusTugasan = isAct ? 'Aktif' : 'Tidak Aktif';
+      
+      komsPersist('upsertAssignment', STAFF_ASSIGNMENTS[i], function() {
+        tunjukToast('Status Penugasan', 'Status dikemaskini di Sheet.');
+      });
+      break;
+    }
+  }
+  paparPenugasan();
+  paparDashboard();
+}
+
+function paparPenugasan() {
+  var box = document.getElementById('senaraiPenugasan');
+  if (!box) return;
+
+  var filterStatus = (document.getElementById('filterAsgStatus') || {}).value || 'ACTIVE';
+  var qStaff = ((document.getElementById('filterAsgStaffName') || {}).value || '').toLowerCase().trim();
+  var qClass = ((document.getElementById('filterAsgClassName') || {}).value || '').toLowerCase().trim();
+
+  var list = STAFF_ASSIGNMENTS.filter(function(a) {
+    var isAct = isAssignmentActive(a);
+    if (filterStatus === 'ACTIVE' && !isAct) return false;
+    if (filterStatus === 'INACTIVE' && isAct) return false;
+
+    var sName = a.StaffID, cName = a.ClassID;
+    for (var i = 0; i < STAFF.length; i++) {
+      if (STAFF[i].StaffID === a.StaffID) { sName = STAFF[i].StaffName; break; }
+    }
+    for (var j = 0; j < CLASSES.length; j++) {
+      if (CLASSES[j].ClassID === a.ClassID || classIdKey(CLASSES[j].ClassID) === classIdKey(a.ClassID)) {
+        cName = CLASSES[j].ClassName; break;
+      }
+    }
+
+    if (qStaff && sName.toLowerCase().indexOf(qStaff) < 0 && String(a.StaffID).toLowerCase().indexOf(qStaff) < 0) {
+      return false;
+    }
+    if (qClass && cName.toLowerCase().indexOf(qClass) < 0 && String(a.ClassID).toLowerCase().indexOf(qClass) < 0) {
+      return false;
+    }
+
+    return true;
+  });
+
+  var h = '';
+  list.forEach(function(a, idx) {
+    var sName = a.StaffID, cName = a.ClassID;
+    for (var i = 0; i < STAFF.length; i++) {
+      if (STAFF[i].StaffID === a.StaffID) { sName = STAFF[i].StaffName; break; }
+    }
+    for (var j = 0; j < CLASSES.length; j++) {
+      if (CLASSES[j].ClassID === a.ClassID || classIdKey(CLASSES[j].ClassID) === classIdKey(a.ClassID)) {
+        cName = CLASSES[j].ClassName; break;
+      }
+    }
+    var isAct = isAssignmentActive(a);
+    h += '<div key="asg-item-' + a.AssignmentID + '-' + idx + '" class="appos-card-subtle" style="padding: 12px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; opacity: ' + (isAct ? 1 : 0.65) + ';">' +
+      '<div><span class="font-mono" style="color: var(--accent-color); font-size: 10px;">' + esc(a.AssignmentID) + '</span>' +
+      '<div style="font-size: 13px; font-weight: 700; color: #fff;">' + esc(sName) + ' <span class="appos-text-muted" style="font-weight: normal;">→</span> ' + esc(cName) + '</div>' +
+      '<span class="appos-text-muted" style="font-size: 10px;">' + esc(a.Peranan || 'Penugasan') + ' • ' + esc(a.AssignmentDate || '') + '</span></div>' +
+      '<div style="display: flex; align-items: center; gap: 8px;">' +
+      '<span class="badge-status ' + (isAct ? 'badge-live' : '') + '">' + (isAct ? 'TRUE • Aktif' : 'FALSE • Tamat') + '</span>' +
+      '<button type="button" class="btn-action text-xs" style="padding: 4px 8px;" onclick="setStatusPenugasan(\'' + esc(a.AssignmentID) + '\', \'' + (isAct ? 'FALSE' : 'TRUE') + '\')">' +
+      (isAct ? 'Tamat Penugasan' : 'Aktifkan') + '</button></div></div>';
+  });
+
+  box.innerHTML = h || '<p class="appos-text-muted" style="padding: 16px; text-align: center;">Tiada rekod penugasan.</p>';
+}
+
+// ==========================================
+// MODUL KEROSAKAN / ISU (4 PERINGKAT)
+// ==========================================
+function toggleFormIsu(show) {
+  var f = document.getElementById('formIsu');
+  if (!f) return;
+  if (show === false) f.classList.add('hidden');
+  else if (show === true) f.classList.remove('hidden');
+  else f.classList.toggle('hidden');
+
+  if (!f.classList.contains('hidden')) {
+    onIsuParlimenChange();
+  }
+}
+
+function onIsuParlimenChange() {
+  var par = (document.getElementById('isuFilterParlimen') || {}).value || 'P.001';
+  var duns = DUN_BY_PAR[par] || ALL_DUN;
+  var sel = document.getElementById('isuFilterDun');
+  if (sel) {
+    var h = '<option value="">Semua DUN</option>';
+    duns.forEach(function(d, idx) {
+      h += '<option key="idun-' + idx + '" value="' + esc(d.kod) + '">' + esc(d.kod + ' ' + d.nama) + '</option>';
+    });
+    sel.innerHTML = h;
+  }
+  onIsuFilterChange();
+}
+
+function onIsuBahagianChange() {
+  var div = (document.getElementById('isuFilterDiv') || {}).value || '';
+  var types = div && CLASS_TYPE_BY_DIV[div] ? CLASS_TYPE_BY_DIV[div] : ALL_CLASS_TYPES;
+  var sel = document.getElementById('isuFilterClassType');
+  if (sel) {
+    var h = '<option value="">Semua Jenis Kelas</option>';
+    types.forEach(function(t, idx) {
+      h += '<option key="ict-' + idx + '" value="' + esc(t) + '">' + esc(t === 'Dandanan DIri' ? 'Dandanan Diri' : t) + '</option>';
+    });
+    sel.innerHTML = h;
+  }
+  onIsuFilterChange();
+}
+
+function onIsuFilterChange() {
+  var par = (document.getElementById('isuFilterParlimen') || {}).value || '';
+  var dun = (document.getElementById('isuFilterDun') || {}).value || '';
+  var div = (document.getElementById('isuFilterDiv') || {}).value || '';
+  var ct = (document.getElementById('isuFilterClassType') || {}).value || '';
+
+  var avail = CLASSES.filter(function(c) {
+    if (par && (c['Kod Parlimen'] || '').indexOf(par) < 0) return false;
+    if (dun && (c['Kod DUN'] || '').indexOf(dun) < 0) return false;
+    if (div && c.DivisionID !== div) return false;
+    if (ct && c.ClassTypeID !== ct) return false;
+    return true;
+  });
+
+  var sel = document.getElementById('isuClass');
+  if (sel) {
+    var h = '<option value="">— Pilih Premis Kelas (' + avail.length + ') —</option>';
+    avail.forEach(function(c, idx) {
+      h += '<option key="cls-opt-' + c.ClassID + '-' + idx + '" value="' + esc(c.ClassID) + '">' + esc(c.ClassName) + ' (' + esc(c.ClassID) + ')</option>';
+    });
+    sel.innerHTML = h;
+  }
+}
+
+function bukaBorangIsuDariKelas(classId) {
+  tutupModalKelas();
+  tukarModul('kerosakan');
+  toggleFormIsu(true);
+  var sel = document.getElementById('isuClass');
+  if (sel) sel.value = classId;
+}
+
+function simpanIsu() {
+  var cId = (document.getElementById('isuClass') || {}).value;
+  var desc = (document.getElementById('isuDesc') || {}).value || '';
+  var sev = (document.getElementById('isuSeverity') || {}).value || 'Biasa';
+
+  if (!cId || !desc.trim()) {
+    tunjukToast('Ralat', 'Sila pilih premis dan masukkan keterangan kerosakan.');
+    return;
+  }
+
+  var newIssue = {
+    IssueID: 'ISS-' + Date.now().toString(36).toUpperCase(),
+    ClassID: cId,
+    IssueDescription: desc.trim(),
+    Severity: sev,
+    Status: 'Baharu',
+    DateReported: new Date().toISOString().slice(0, 19).replace('T', ' '),
+    ReportedByStaffID: 'Pegawai Pemantau'
+  };
+
+  CLASS_ISSUES.unshift(newIssue);
+  toggleFormIsu(false);
+  document.getElementById('isuDesc').value = '';
+  paparKerosakan();
+  paparDashboard();
+
+  komsPersist('upsertIssue', newIssue, function() {
+    tunjukToast('Isu Premis', 'Laporan isu berjaya dihantar ke Google Sheet.');
+  });
+}
+
+function advanceIssueStatus(issueId, nextStatus) {
+  var iss = null;
+  for (var i = 0; i < CLASS_ISSUES.length; i++) {
+    if (CLASS_ISSUES[i].IssueID === issueId) { iss = CLASS_ISSUES[i]; break; }
+  }
+  if (!iss) return;
+
+  if (nextStatus === 'Selesai') {
+    // Pastikan modal edit dibuka untuk lampirkan gambar selesai
+    bukaEditIsu(issueId, true);
+    return;
+  }
+
+  iss.Status = nextStatus;
+  paparKerosakan();
+  paparDashboard();
+
+  komsPersist('upsertIssue', iss, function() {
+    tunjukToast('Status Isu', 'Status ditukar kepada: ' + nextStatus);
+  });
+}
+
+function paparKerosakan() {
+  var box = document.getElementById('senaraiKerosakan');
+  if (!box) return;
+
+  var stages = [
+    { st: 'Baharu', label: '1. Baharu (Laporan Awal)', color: 'var(--rose-accent)', icon: 'fa-triangle-exclamation' },
+    { st: 'Dalam Tindakan', label: '2. Dalam Tindakan', color: 'var(--amber-accent)', icon: 'fa-clock-rotate-left' },
+    { st: 'Sedang Dibaiki', label: '3. Sedang Dibaiki', color: 'var(--blue-accent)', icon: 'fa-screwdriver-wrench' },
+    { st: 'Selesai', label: '4. Selesai', color: 'var(--emerald-accent)', icon: 'fa-circle-check' }
+  ];
+
+  var html = '';
+  stages.forEach(function(stage) {
+    var items = CLASS_ISSUES.filter(function(i) {
+      var s = String(i.Status || 'Baharu').toLowerCase();
+      if (stage.st === 'Baharu') return s === 'baharu' || s === 'baru' || s === 'new';
+      if (stage.st === 'Dalam Tindakan') return s.indexOf('dalam') >= 0;
+      if (stage.st === 'Sedang Dibaiki') return s.indexOf('sedang') >= 0 || s.indexOf('baiki') >= 0;
+      if (stage.st === 'Selesai') return s.indexOf('selesai') >= 0 || s === 'done';
+      return false;
+    });
+
+    html += '<div style="margin-bottom: 12px;">' +
+      '<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">' +
+      '<div style="font-size: 12px; font-weight: 800; color: ' + stage.color + '; text-transform: uppercase;">' +
+      '<i class="fa-solid ' + stage.icon + '"></i> ' + stage.label + ' <span class="badge-status" style="background: rgba(148,163,184,0.15); color: #94A3B8;">' + items.length + '</span></div></div>';
+
+    if (!items.length) {
+      html += '<p class="appos-text-muted" style="font-size: 11px; padding: 10px; border: 1px dashed var(--border-color); border-radius: 8px;">Tiada isu dalam status ini.</p>';
+    } else {
+      items.forEach(function(k, idx) {
+        var cName = k.ClassID;
+        for (var cIdx = 0; cIdx < CLASSES.length; cIdx++) {
+          if (CLASSES[cIdx].ClassID === k.ClassID || classIdKey(CLASSES[cIdx].ClassID) === classIdKey(k.ClassID)) {
+            cName = CLASSES[cIdx].ClassName; break;
+          }
+        }
+        html += '<div key="issue-card-' + k.IssueID + '-' + idx + '" class="appos-card-subtle" style="padding: 12px; margin-bottom: 8px; border-left: 3px solid ' + stage.color + ';">' +
+          '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">' +
+          '<span class="font-mono" style="font-size: 10.5px; font-weight: 700; color: var(--accent-color);">' + esc(k.IssueID) + '</span>' +
+          '<span class="badge-status" style="background: rgba(244,63,94,0.15); color: var(--rose-accent);">' + esc(k.Severity || 'Biasa') + '</span></div>' +
+          '<h4 style="font-size: 13px; font-weight: 700; color: #fff; cursor: pointer;" onclick="bukaModalIsu(\'' + esc(k.IssueID) + '\')">' + esc(k.IssueDescription) + '</h4>' +
+          '<div style="font-size: 11px; color: #94A3B8; margin-top: 4px;"><i class="fa-solid fa-school"></i> ' + esc(cName) + ' • ' + esc(k.DateReported || '') + '</div>' +
+          '<div style="display: flex; justify-content: flex-end; gap: 6px; margin-top: 8px; pt: 6px; border-top: 1px solid var(--border-color);">';
+
+        if (stage.st === 'Baharu') {
+          html += '<button type="button" class="btn-action text-xs" style="padding: 4px 8px;" onclick="advanceIssueStatus(\'' + esc(k.IssueID) + '\', \'Dalam Tindakan\')"><i class="fa-solid fa-play"></i> Mula Tindakan</button>';
+        } else if (stage.st === 'Dalam Tindakan') {
+          html += '<button type="button" class="btn-action text-xs" style="padding: 4px 8px;" onclick="advanceIssueStatus(\'' + esc(k.IssueID) + '\', \'Sedang Dibaiki\')"><i class="fa-solid fa-screwdriver-wrench"></i> Sedang Dibaiki</button>';
+        } else if (stage.st === 'Sedang Dibaiki') {
+          html += '<button type="button" class="btn-action btn-gold text-xs" style="padding: 4px 10px;" onclick="advanceIssueStatus(\'' + esc(k.IssueID) + '\', \'Selesai\')"><i class="fa-solid fa-check"></i> Tanda Selesai</button>';
+        }
+
+        html += '</div></div>';
+      });
+    }
+    html += '</div>';
+  });
+
+  box.innerHTML = html;
+}
+
+// Modal Detail Isu
+function bukaModalIsu(issueId) {
+  var iss = null;
+  for (var i = 0; i < CLASS_ISSUES.length; i++) {
+    if (CLASS_ISSUES[i].IssueID === issueId) { iss = CLASS_ISSUES[i]; break; }
+  }
+  if (!iss) return;
+
+  document.getElementById('modalIsuBadge').textContent = iss.Status || 'Baharu';
+  document.getElementById('modalIsuTitle').textContent = iss.IssueDescription;
+
+  var h = '<div style="font-size: 12px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px;">' +
+    '<div><span class="appos-text-muted">IssueID</span><br><b class="font-mono text-accent">' + esc(iss.IssueID) + '</b></div>' +
+    '<div><span class="appos-text-muted">Premis</span><br><b>' + esc(iss.ClassID) + '</b></div>' +
+    '<div><span class="appos-text-muted">Tarikh Laporan</span><br><b>' + esc(iss.DateReported || '—') + '</b></div>' +
+    '<div><span class="appos-text-muted">Keterangan</span><br><p style="color: #fff; margin-top: 2px;">' + esc(iss.IssueDescription) + '</p></div></div>';
+
+  document.getElementById('modalIsuBody').innerHTML = h;
+  document.getElementById('modalIsu').classList.remove('hidden');
+}
+function tutupModalIsu() {
+  var m = document.getElementById('modalIsu');
+  if (m) m.classList.add('hidden');
+}
+
+// Modal Edit Isu & Bukti Selesai
+function bukaEditIsu(issueId, mustBeDone) {
+  var iss = null;
+  for (var i = 0; i < CLASS_ISSUES.length; i++) {
+    if (CLASS_ISSUES[i].IssueID === issueId) { iss = CLASS_ISSUES[i]; break; }
+  }
+  if (!iss) return;
+
+  var h = '<form onsubmit="simpanEditIsu(event, \'' + esc(iss.IssueID) + '\')" style="display: flex; flex-direction: column; gap: 10px; font-size: 12px;">' +
+    '<div class="filter-group"><label class="filter-group-label">Status Isu</label>' +
+    '<select id="editIsuStatus" class="filter-select font-bold">' +
+    '<option value="Baharu" ' + (iss.Status === 'Baharu' ? 'selected' : '') + '>Baharu</option>' +
+    '<option value="Dalam Tindakan" ' + (iss.Status === 'Dalam Tindakan' ? 'selected' : '') + '>Dalam Tindakan</option>' +
+    '<option value="Sedang Dibaiki" ' + (iss.Status === 'Sedang Dibaiki' ? 'selected' : '') + '>Sedang Dibaiki</option>' +
+    '<option value="Selesai" ' + (mustBeDone || iss.Status === 'Selesai' ? 'selected' : '') + '>Selesai (Perlu 2 Gambar Bukti)</option>' +
+    '</select></div>' +
+    '<div class="filter-group"><label class="filter-group-label">Ulasan / Tindakan Penyelesaian</label>' +
+    '<input type="text" id="editIsuPenyelesaian" value="' + esc(iss.Penyelesaian || iss.Resolution || '') + '" class="filter-select" placeholder="cth: Kerja pembaikan selesai..."></div>' +
+    '<div class="filter-group"><label class="filter-group-label">Bukti Selesai 1 (URL)</label>' +
+    '<input type="text" id="editIsuComp1" value="' + esc(iss['Completion Image 1'] || '') + '" class="filter-select" placeholder="https://..."></div>' +
+    '<div class="filter-group"><label class="filter-group-label">Bukti Selesai 2 (URL)</label>' +
+    '<input type="text" id="editIsuComp2" value="' + esc(iss['Completion Image 2'] || '') + '" class="filter-select" placeholder="https://..."></div>' +
+    '<div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">' +
+    '<button type="button" class="btn-action" onclick="tutupModalEditIsu()">Batal</button>' +
+    '<button type="submit" class="btn-action btn-gold font-bold">Simpan Isu</button></div></form>';
+
+  document.getElementById('modalEditIsuBody').innerHTML = h;
+  document.getElementById('modalEditIsu').classList.remove('hidden');
+}
+function tutupModalEditIsu() {
+  var m = document.getElementById('modalEditIsu');
+  if (m) m.classList.add('hidden');
+}
+function simpanEditIsu(e, issueId) {
+  e.preventDefault();
+  var iss = null;
+  for (var i = 0; i < CLASS_ISSUES.length; i++) {
+    if (CLASS_ISSUES[i].IssueID === issueId) { iss = CLASS_ISSUES[i]; break; }
+  }
+  if (!iss) return;
+
+  var st = document.getElementById('editIsuStatus').value;
+  var sol = document.getElementById('editIsuPenyelesaian').value;
+  var c1 = document.getElementById('editIsuComp1').value;
+  var c2 = document.getElementById('editIsuComp2').value;
+
+  if (st === 'Selesai' && !c1 && !c2) {
+    alert('Sila masukkan sekurang-kurangnya 1 atau 2 URL gambar bukti selesai untuk status Selesai.');
+    return;
+  }
+
+  iss.Status = st;
+  iss.Penyelesaian = sol;
+  iss['Completion Image 1'] = c1;
+  iss['Completion Image 2'] = c2;
+  if (st === 'Selesai' && !iss.DateResolved) {
+    iss.DateResolved = new Date().toISOString().slice(0, 19).replace('T', ' ');
+  }
+
+  tutupModalEditIsu();
+  paparKerosakan();
+  paparDashboard();
+
+  komsPersist('upsertIssue', iss, function() {
+    tunjukToast('Isu Dikemaskini', 'Perubahan disimpan ke Google Sheet.');
+  });
+}
+
+// ==========================================
+// MODUL PETA GIS (LEAFLET)
+// ==========================================
+function onMapParlimenChange() {
+  var par = (document.getElementById('mapFilterParlimen') || {}).value || '';
+  var duns = par && DUN_BY_PAR[par] ? DUN_BY_PAR[par] : ALL_DUN;
+  var sel = document.getElementById('mapFilterDun');
+  if (sel) {
+    var h = '<option value="">Semua DUN</option>';
+    duns.forEach(function(d, idx) {
+      h += '<option key="mp-dun-' + idx + '" value="' + esc(d.kod) + '">' + esc(d.kod + ' ' + d.nama) + '</option>';
+    });
+    sel.innerHTML = h;
+  }
+  paparPetaLeaflet();
+}
+
+function resetPenapisPeta() {
+  var p = document.getElementById('mapFilterParlimen'); if (p) p.value = '';
+  var d = document.getElementById('mapFilterDun'); if (d) d.value = '';
+  mapTypeFilter = '';
+  onMapParlimenChange();
+}
+
+function setMapTypeFilter(t) {
+  mapTypeFilter = t;
+  paparPetaLeaflet();
+}
+
+function paparPetaLeaflet() {
+  var canvas = document.getElementById('petaCanvas');
+  if (!canvas || typeof L === 'undefined') return;
+
+  if (!komsMap) {
+    komsMap = L.map(canvas, { zoomControl: true, scrollWheelZoom: true }).setView([6.444, 100.198], 11);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18,
+      attribution: '&copy; OpenStreetMap'
+    }).addTo(komsMap);
+    komsMarkers = L.layerGroup().addTo(komsMap);
+  }
+
+  var par = (document.getElementById('mapFilterParlimen') || {}).value || '';
+  var dun = (document.getElementById('mapFilterDun') || {}).value || '';
+
+  var filtered = CLASSES.filter(function(c) {
+    if (par && (c['Kod Parlimen'] || '').indexOf(par) < 0) return false;
+    if (dun && (c['Kod DUN'] || '').indexOf(dun) < 0) return false;
+    if (mapTypeFilter && String(c.ClassTypeID || '').toLowerCase() !== mapTypeFilter.toLowerCase()) return false;
+    return true;
+  });
+
+  var countEl = document.getElementById('mapRekodCount');
+  if (countEl) countEl.textContent = filtered.length;
+
+  // Render Legend
+  var legend = document.getElementById('petaLegend');
+  if (legend) {
+    var hLeg = '<button type="button" class="chip ' + (!mapTypeFilter ? 'active' : '') + '" onclick="setMapTypeFilter(\'\')">Semua Jenis</button>';
+    ALL_CLASS_TYPES.forEach(function(t) {
+      var col = PIN_COLORS[t] || '#C5A059';
+      var act = mapTypeFilter === t ? 'active' : '';
+      hLeg += '<button type="button" class="chip ' + act + '" onclick="setMapTypeFilter(\'' + esc(t) + '\')">' +
+        '<i class="dot" style="background: ' + col + ';"></i> ' + esc(t === 'Dandanan DIri' ? 'Dandanan Diri' : t) + '</button>';
+    });
+    legend.innerHTML = hLeg;
+  }
+
+  komsMarkers.clearLayers();
+  var bounds = [];
+  var byDun = {};
+
+  filtered.forEach(function(c, idx) {
+    var coords = coordsForClass(c);
+    var lat = coords[0], lng = coords[1];
+    var d = c['Kod DUN'] || 'x';
+    byDun[d] = (byDun[d] || 0) + 1;
+    var angle = (idx * 2.399) % (Math.PI * 2);
+    var radius = 0.0035 + (idx % 6) * 0.0012;
+    lat += Math.cos(angle) * radius;
+    lng += Math.sin(angle) * radius;
+    bounds.push([lat, lng]);
+
+    var col = PIN_COLORS[c.ClassTypeID] || '#C5A059';
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="40" viewBox="0 0 28 40">' +
+      '<path fill="' + col + '" stroke="#FFFFFF" stroke-width="1.8" d="M14 0C6.3 0 0 6.3 0 14c0 10.5 14 26 14 26s14-15.5 14-26C28 6.3 21.7 0 14 0z"/>' +
+      '<circle cx="14" cy="14" r="5" fill="#FFFFFF"/></svg>';
+    var icon = L.icon({
+      iconUrl: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg),
+      iconSize: [28, 40],
+      iconAnchor: [14, 40],
+      popupAnchor: [0, -36]
+    });
+
+    var marker = L.marker([lat, lng], { icon: icon });
+    var pop = '<div style="min-width: 200px; font-family: system-ui, sans-serif; padding: 2px;">' +
+      '<span style="font-size: 9.5px; font-weight: 800; color: #2563EB;">' + esc(c.DivisionID) + ' • ' + esc(c.ClassTypeID) + '</span>' +
+      '<h4 style="font-size: 13px; font-weight: 800; color: #0F172A; margin: 3px 0 4px;">' + esc(c.ClassName) + '</h4>' +
+      '<p style="font-size: 11px; color: #64748B; margin-bottom: 6px;">' + esc(c['Kod Parlimen'] || '') + ' • ' + esc(c['Kod DUN'] || '') + '</p>' +
+      '<button type="button" style="width: 100%; background: #C5A059; color: #0A192F; font-size: 11px; font-weight: 800; padding: 5px 8px; border: none; border-radius: 6px; cursor: pointer; margin-bottom: 6px;" onclick="bukaModalKelas(\'' + esc(c.ClassID) + '\', \'' + esc(c.ClassName) + '\')">Buka Dossier Premis</button>' +
+      '<div style="border-top: 1px solid #CBD5E1; padding-top: 5px; display: flex; gap: 4px;">' +
+      '<a href="https://www.google.com/maps/search/?api=1&query=' + lat + ',' + lng + '" target="_blank" style="flex: 1; text-align: center; background: #2563EB; color: #fff; font-size: 9.5px; font-weight: 700; padding: 4px; border-radius: 4px; text-decoration: none;">Maps</a>' +
+      '<a href="https://maps.apple.com/?q=' + encodeURIComponent(c.ClassName || '') + '&ll=' + lat + ',' + lng + '" target="_blank" style="flex: 1; text-align: center; background: #0F172A; color: #fff; font-size: 9.5px; font-weight: 700; padding: 4px; border-radius: 4px; text-decoration: none;">Apple</a>' +
+      '<a href="https://earth.google.com/web/search/' + lat + ',' + lng + '" target="_blank" style="flex: 1; text-align: center; background: #059669; color: #fff; font-size: 9.5px; font-weight: 700; padding: 4px; border-radius: 4px; text-decoration: none;">Earth</a>' +
+      '</div></div>';
+
+    marker.bindPopup(pop);
+    marker.addTo(komsMarkers);
+  });
+
+  if (bounds.length) {
+    try { komsMap.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 }); } catch (e) {}
+  }
+  setTimeout(function() { if (komsMap) komsMap.invalidateSize(); }, 120);
+
+  // Senarai di bawah peta
+  var listEl = document.getElementById('petaSenarai');
+  if (listEl) {
+    var hList = '';
+    filtered.slice(0, 30).forEach(function(c, idx) {
+      var col = PIN_COLORS[c.ClassTypeID] || '#C5A059';
+      hList += '<div key="peta-list-' + c.ClassID + '-' + idx + '" class="appos-card-subtle list-card" style="padding: 10px; border-left: 4px solid ' + col + ';" onclick="bukaModalKelas(\'' + esc(c.ClassID) + '\', \'' + esc(c.ClassName) + '\')">' +
+        '<div style="display: flex; justify-content: space-between;"><span class="lc-id">' + esc(c.ClassID) + '</span><span class="badge-status" style="background: rgba(59,130,246,0.15); color: var(--blue-accent);">' + esc(c.ClassTypeID) + '</span></div>' +
+        '<div class="lc-title">' + esc(c.ClassName) + '</div>' +
+        '<div class="lc-meta"><span>' + esc(c['Kod DUN'] || '') + '</span><span>' + esc(c.Address || '') + '</span></div></div>';
+    });
+    listEl.innerHTML = hList;
+  }
+}
+
+// ==========================================
+// EKSPORT EXCEL (.XLSX)
+// ==========================================
+function eksportXLSX() {
+  try {
+    if (typeof XLSX === 'undefined') {
+      tunjukToast('Ralat', 'Pustaka SheetJS sedang dimuatkan...');
+      return;
+    }
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(CLASSES), 'Classes');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(STAFF), 'Staff');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(STAFF_ASSIGNMENTS), 'StaffAssignments');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(CLASS_ISSUES), 'ClassIssues');
+    XLSX.writeFile(wb, 'KOMS_Class_Management_SSOT.xlsx');
+    tunjukToast('Eksport XLSX', 'Fail KOMS_Class_Management_SSOT.xlsx berjaya dimuat turun.');
+  } catch (e) {
+    tunjukToast('Ralat', e.message || 'Gagal eksport fail.');
+  }
+}
+
+// ==========================================
+// INISIALISASI APLIKASI
+// ==========================================
+function initKomsApp() {
+  if (window.__KOMS_BOOTSTRAP__) {
+    var b = window.__KOMS_BOOTSTRAP__;
+    if (b.classes && b.classes.length) CLASSES = b.classes;
+    if (b.staff && b.staff.length) STAFF = b.staff;
+    if (b.assignments && b.assignments.length) STAFF_ASSIGNMENTS = b.assignments;
+    if (b.issues && b.issues.length) CLASS_ISSUES = b.issues;
+    if (b.statusBgn && b.statusBgn.length) STATUS_BGN = b.statusBgn;
+    if (b.statusTanah && b.statusTanah.length) STATUS_TANAH = b.statusTanah;
+    if (b.jawatan && b.jawatan.length) JAWATAN = b.jawatan;
+  }
+
+  try {
+    var t = localStorage.getItem('koms_theme');
+    if (t) { currentTheme = t; document.body.className = t; }
+  } catch (e) {}
+
+  initStatusTanahFilter();
+  onDivisionChange();
+  onKelasParlimenChange();
+  paparDashboard();
+  tukarModul('utama');
+  console.log('KOMS GAS App initialized successfully. Premis:', CLASSES.length, 'Staff:', STAFF.length);
+}
+
+document.addEventListener('DOMContentLoaded', initKomsApp);
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+  setTimeout(initKomsApp, 50);
+}
+</script>

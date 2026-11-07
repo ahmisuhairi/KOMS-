@@ -1,0 +1,214 @@
+@import "tailwindcss";
+
+:root, body.theme-dark {
+  --bg-page: #0B0F19;
+  --bg-header: #111827;
+  --bg-card: #161F30;
+  --bg-card-subtle: #111A29;
+  --border-color: #24334A;
+  --text-main: #F8FAFC;
+  --text-muted: #94A3B8;
+  --accent-color: #C5A059;
+  --accent-hover: #B38E46;
+  --blue-accent: #3B82F6;
+  --emerald-accent: #10B981;
+  --purple-accent: #A855F7;
+  --rose-accent: #F43F5E;
+  --amber-accent: #F59E0B;
+}
+
+body.theme-ocean {
+  --bg-page: #06101E;
+  --bg-header: #0A192F;
+  --bg-card: #10203B;
+  --bg-card-subtle: #0C182E;
+  --border-color: #1E3A5F;
+  --text-main: #F1F5F9;
+  --text-muted: #7DD3FC;
+  --accent-color: #38BDF8;
+  --accent-hover: #0EA5E9;
+  --blue-accent: #60A5FA;
+  --emerald-accent: #2DD4BF;
+  --purple-accent: #A78BFA;
+  --rose-accent: #FB7185;
+  --amber-accent: #FBBF24;
+}
+
+body.theme-light {
+  --bg-page: #F8FAFC;
+  --bg-header: #FFFFFF;
+  --bg-card: #FFFFFF;
+  --bg-card-subtle: #F1F5F9;
+  --border-color: #E2E8F0;
+  --text-main: #0F172A;
+  --text-muted: #64748B;
+  --accent-color: #B45309;
+  --accent-hover: #92400E;
+  --blue-accent: #2563EB;
+  --emerald-accent: #059669;
+  --purple-accent: #7C3AED;
+  --rose-accent: #E11D48;
+  --amber-accent: #D97706;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  min-height: 100vh;
+  background-color: var(--bg-page);
+  color: var(--text-main);
+  font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.font-mono {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Custom cards and buttons */
+.appos-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  color: var(--text-main);
+}
+
+.appos-card-subtle {
+  background-color: var(--bg-card-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+}
+
+.appos-text-muted {
+  color: var(--text-muted);
+}
+
+.btn-action {
+  border: 1px solid var(--border-color);
+  background: rgba(255, 255, 255, 0.05);
+  color: #ffffff;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 7px 12px;
+  border-radius: 9px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn-action:hover {
+  background: var(--accent-color);
+  color: #0A192F;
+  border-color: var(--accent-color);
+}
+
+body.theme-light .btn-action {
+  color: var(--text-main);
+  background: #E2E8F0;
+  border-color: #CBD5E1;
+}
+
+body.theme-light .btn-action:hover {
+  background: var(--accent-color);
+  color: #ffffff;
+}
+
+.btn-gold {
+  background-color: var(--accent-color);
+  color: #0A192F;
+  border: none;
+  font-weight: 800;
+}
+
+.btn-gold:hover {
+  background-color: var(--accent-hover);
+  color: #0A192F;
+}
+
+body.theme-light .btn-gold {
+  background-color: var(--accent-color);
+  color: #ffffff;
+}
+
+.badge-status {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 9.5px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  text-transform: uppercase;
+}
+
+.badge-live {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34D399;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+/* Hover effects for dashboard tiles */
+.dash-tile, .hud-card {
+  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+
+.dash-tile:hover, .hud-card.clickable:hover {
+  border-color: var(--accent-color) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 0 0 1px var(--accent-color), 0 0 18px rgba(197, 160, 89, 0.35);
+}
+
+.hud-card.active-filter {
+  border-color: var(--rose-accent) !important;
+  box-shadow: 0 0 0 1px var(--rose-accent), 0 0 18px rgba(244, 63, 94, 0.25);
+}
+
+/* Data Table styles */
+table.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11.5px;
+}
+
+table.data-table th {
+  background: var(--bg-card-subtle);
+  color: var(--accent-color);
+  text-align: left;
+  padding: 10px 12px;
+  font-weight: 700;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  border-bottom: 1px solid var(--border-color);
+  white-space: nowrap;
+}
+
+table.data-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-main);
+  vertical-align: top;
+}
+
+table.data-table tr:hover td {
+  background: rgba(197, 160, 89, 0.06);
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}

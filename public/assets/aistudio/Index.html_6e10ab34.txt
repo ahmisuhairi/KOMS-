@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>KOMS — AppOS Live Field Hub</title>
+  <meta name="theme-color" content="#C5A059">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome, Leaflet & SheetJS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <!--KOMS_INCLUDE_CSS-->
+</head>
+<body class="theme-dark">
+
+  <!-- HEADER -->
+  <header>
+    <div class="header-inner">
+      <div style="display: flex; align-items: center; gap: 12px; min-width: 0;">
+        <button onclick="toggleDrawer(true)" class="btn-action" style="padding: 8px 12px;" title="Menu KOMS">
+          <i class="fa-solid fa-bars"></i>
+        </button>
+        <div class="logo-box"><i class="fa-solid fa-graduation-cap"></i></div>
+        <div style="min-width: 0;">
+          <h1 style="font-size: 14px; font-weight: 800; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+            KEMAS OPERATIVE MANAGEMENT SYSTEM (KOMS)
+          </h1>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main>
+    <!-- MODUL UTAMA (DASHBOARD) -->
+    <section id="modul-utama" class="koms-section" style="display: flex; flex-direction: column; gap: 14px;">
+      <!-- 6 HUD KPI Cards -->
+      <div id="hudMetrikBar" class="hud-grid">
+        <div class="appos-card hud-card clickable" onclick="tukarModul('kelas')">
+          <div>
+            <span class="appos-text-muted" style="font-size: 9.5px; font-weight: 700; text-transform: uppercase; display: block;">1. Fasiliti Kelas</span>
+            <b class="font-mono" style="font-size: 20px; color: var(--text-main); display: block; margin-top: 2px;"><span id="kpiPremis">—</span> Premis</b>
+            <span style="font-size: 10px; color: var(--emerald-accent);" id="kpiPremisSub">PAK + PKEM + PKOM</span>
+          </div>
+          <div class="hud-icon-box" style="background: rgba(59,130,246,0.15); color: var(--blue-accent);"><i class="fa-solid fa-school"></i></div>
+        </div>
+        <div class="appos-card hud-card clickable" onclick="tukarModul('staff')">
+          <div>
+            <span class="appos-text-muted" style="font-size: 9.5px; font-weight: 700; text-transform: uppercase; display: block;">2. Staff</span>
+            <b class="font-mono" style="font-size: 20px; color: var(--text-main); display: block; margin-top: 2px;"><span id="kpiStaff">—</span> Staf</b>
+            <span style="font-size: 10px; color: var(--emerald-accent);">Direktori kakitangan</span>
+          </div>
+          <div class="hud-icon-box" style="background: rgba(16,185,129,0.15); color: var(--emerald-accent);"><i class="fa-solid fa-users"></i></div>
+        </div>
+        <div class="appos-card hud-card clickable" onclick="tukarModul('penugasan')">
+          <div>
+            <span class="appos-text-muted" style="font-size: 9.5px; font-weight: 700; text-transform: uppercase; display: block;">3. Tugas Aktif</span>
+            <b class="font-mono" style="font-size: 20px; color: var(--text-main); display: block; margin-top: 2px;"><span id="kpiAssign">—</span></b>
+            <span style="font-size: 10px; color: var(--amber-accent);">Penugasan aktif staf</span>
+          </div>
+          <div class="hud-icon-box" style="background: rgba(245,158,11,0.15); color: var(--amber-accent);"><i class="fa-solid fa-link"></i></div>
+        </div>
+        <div class="appos-card hud-card clickable" id="kpiCardKelasAdaStaf" onclick="tapisKelasAdaStaf()" title="Papar kelas berpenempatan staf">
+          <div>
+            <span class="appos-text-muted" style="font-size: 9.5px; font-weight: 700; text-transform: uppercase; display: block;">4. Kelas Ada Staf</span>
+            <b class="font-mono" style="font-size: 20px; color: var(--emerald-accent); display: block; margin-top: 2px;"><span id="kpiKelasAdaStaf">—</span></b>
+            <span style="font-size: 10px; color: var(--emerald-accent);">Sudah ditempatkan</span>
+          </div>
+          <div class="hud-icon-box" style="background: rgba(16,185,129,0.12); color: var(--emerald-accent);"><i class="fa-solid fa-user-check"></i></div>
+        </div>
+        <div class="appos-card hud-card clickable" id="kpiCardKelasTiadaStaf" onclick="tapisKelasTanpaStaf()" title="Papar kelas tanpa penempatan staf">
+          <div>
+            <span class="appos-text-muted" style="font-size: 9.5px; font-weight: 700; text-transform: uppercase; display: block;">5. Kelas Tanpa Staf</span>
+            <b class="font-mono" style="font-size: 20px; color: var(--rose-accent); display: block; margin-top: 2px;"><span id="kpiKelasTiadaStaf">—</span></b>
+            <span style="font-size: 10px; color: var(--rose-accent);">Tiada penempatan</span>
+          </div>
+          <div class="hud-icon-box" style="background: rgba(244,63,94,0.12); color: var(--rose-accent);"><i class="fa-solid fa-user-slash"></i></div>
+        </div>
+        <div class="appos-card hud-card clickable" onclick="tapisStafTiadaKelas()" title="Papar staf tanpa penempatan kelas">
+          <div>
+            <span class="appos-text-muted" style="font-size: 9.5px; font-weight: 700; text-transform: uppercase; display: block;">6. Staf Tanpa Kelas</span>
+            <b class="font-mono" style="font-size: 20px; color: var(--rose-accent); display: block; margin-top: 2px;"><span id="kpiStafTiadaKelasDash">—</span></b>
+            <span style="font-size: 10px; color: var(--rose-accent);">Tiada penempatan</span>
+          </div>
+          <div class="hud-icon-box" style="background: rgba(244,63,94,0.15); color: var(--rose-accent);"><i class="fa-solid fa-user-xmark"></i></div>
+        </div>
+      </div>
+
+      <!-- Status Bangunan & Tanah Grid -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px;">
+        <div class="appos-card data-panel">
+          <h3 style="font-size: 13px; font-weight: 800; color: var(--accent-color); margin-bottom: 8px;">
+            <i class="fa-solid fa-building"></i> Status Bangunan
+          </h3>
+          <div id="dashStatusBgn" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;"></div>
+        </div>
+
+        <div class="appos-card data-panel">
+          <h3 style="font-size: 13px; font-weight: 800; color: var(--accent-color); margin-bottom: 8px;">
+            <i class="fa-solid fa-map"></i> Status Tanah
+          </h3>
+          <div id="dashStatusTanah" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;"></div>
+        </div>
+      </div>
+
+      <!-- Bahagian & Jenis Kelas -->
+      <div class="appos-card data-panel">
+        <h3 style="font-size: 13px; font-weight: 800; color: var(--accent-color); margin-bottom: 10px;">
+          <i class="fa-solid fa-layer-group"></i> Mengikut Bahagian &amp; Jenis Kelas
+        </h3>
+        <div id="dashBahagianJenis"></div>
+      </div>
+
+      <!-- Taburan Kelas & Staff Mengikut Parlimen -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px;">
+        <div class="appos-card data-panel">
+          <h3 style="font-size: 13px; font-weight: 800; color: var(--accent-color); margin-bottom: 8px;">
+            <i class="fa-solid fa-school"></i> Taburan Kelas Mengikut Parlimen
+          </h3>
+          <div id="dashParlimen" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;"></div>
+        </div>
+
+        <div class="appos-card data-panel">
+          <h3 style="font-size: 13px; font-weight: 800; color: var(--accent-color); margin-bottom: 8px;">
+            <i class="fa-solid fa-users"></i> Taburan Staff Mengikut Parlimen
+          </h3>
+          <div id="dashStaffParlimen" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;"></div>
+        </div>
+      </div>
+
+      <!-- Status Lantikan -->
+      <div class="appos-card data-panel">
+        <h3 style="font-size: 13px; font-weight: 800; color: var(--accent-color); margin-bottom: 8px;">
+          <i class="fa-solid fa-file-signature"></i> Status Lantikan Kakitangan
+        </h3>
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+          <div class="appos-card hud-card clickable" onclick="tapisStaffLantikan('Kontrak')">
+            <div>
+              <span class="appos-text-muted" style="font-size: 9.5px; font-weight: 700; text-transform: uppercase; display: block;">Lantikan Kontrak</span>
+              <b class="font-mono" style="font-size: 20px; color: var(--text-main); display: block; margin-top: 2px;"><span id="kpiLantikanKontrak">—</span></b>
+              <span style="font-size: 10px; color: var(--amber-accent);">Status = Kontrak</span>
+            </div>
+            <div class="hud-icon-box" style="background: rgba(245,158,11,0.15); color: var(--amber-accent);"><i class="fa-solid fa-file-contract"></i></div>
+          </div>
+          <div class="appos-card hud-card clickable" onclick="tapisStaffLantikan('JSKT')">
+            <div>
+              <span class="appos-text-muted" style="font-size: 9.5px; font-weight: 700; text-transform: uppercase; display: block;">Lantikan JSKT</span>
+              <b class="font-mono" style="font-size: 20px; color: var(--text-main); display: block; margin-top: 2px;"><span id="kpiLantikanJSKT">—</span></b>
+              <span style="font-size: 10px; color: var(--blue-accent);">Status = JSKT</span>
+            </div>
+            <div class="hud-icon-box" style="background: rgba(59,130,246,0.15); color: var(--blue-accent);"><i class="fa-solid fa-id-badge"></i></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MODUL KELAS -->
+    <section id="modul-kelas" class="koms-section" style="display: none; flex-direction: column; gap: 14px;">
+      <div class="appos-card data-panel">
+        <div class="data-toolbar" style="flex-direction: column; align-items: stretch; gap: 12px;">
+          <div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; align-items: flex-start;">
+            <div>
+              <h3 style="font-size: 14px; font-weight: 800; color: var(--accent-color); display: flex; align-items: center; gap: 8px;">
+                <i class="fa-solid fa-database"></i> Pangkalan Data Premis Kelas (SSOT)
+              </h3>
+              <p class="appos-text-muted" style="font-size: 11px;">
+                <span class="font-mono font-bold" id="rekodCount" style="color:#fff;">0 rekod</span> • Klik mana-mana baris untuk membuka dossier penuh
+              </p>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button onclick="eksportXLSX()" class="btn-action btn-gold"><i class="fa-solid fa-file-excel"></i> XLSX</button>
+              <button onclick="bukaDaftarKelasBaharu()" class="btn-action"><i class="fa-solid fa-plus"></i> Tambah Premis</button>
+            </div>
+          </div>
+
+          <!-- Filters -->
+          <div class="filter-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px;">
+            <div class="filter-group">
+              <div class="filter-group-label"><i class="fa-solid fa-layer-group"></i> Bahagian &amp; Jenis Kelas</div>
+              <select id="filterDivision" class="filter-select" onchange="onDivisionChange()">
+                <option value="">Semua Bahagian</option>
+                <option value="PAK">PAK — Pendidikan Awal Kanak-kanak</option>
+                <option value="PKEM">PKEM — Pendidikan Kemahiran</option>
+                <option value="PKOM">PKOM — Pembangunan Komuniti</option>
+              </select>
+              <select id="filterClassType" class="filter-select" onchange="applyKelasFilters()">
+                <option value="">Semua Jenis Kelas</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <div class="filter-group-label"><i class="fa-solid fa-map-location-dot"></i> Parlimen &amp; DUN</div>
+              <select id="filterParlimen" class="filter-select" onchange="onKelasParlimenChange()">
+                <option value="">Semua Parlimen</option>
+                <option value="P.001">P.001 Padang Besar</option>
+                <option value="P.002">P.002 Kangar</option>
+                <option value="P.003">P.003 Arau</option>
+              </select>
+              <select id="filterDun" class="filter-select" onchange="applyKelasFilters()">
+                <option value="">Semua DUN</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <div class="filter-group-label"><i class="fa-solid fa-landmark"></i> Status Milik Tanah</div>
+              <select id="filterStatusTanah" class="filter-select" onchange="applyKelasFilters()">
+                <option value="">Semua Status Tanah</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div id="kelasFilterBanner" class="hidden" style="margin: 0 0 10px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--accent-color); background: rgba(197,160,89,0.1); display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+          <span id="kelasFilterBannerText" style="font-size: 11.5px; color: var(--text-main);"></span>
+          <button type="button" class="btn-action" style="font-size: 11px; padding: 4px 10px;" onclick="clearKelasExtraFilter()"><i class="fa-solid fa-xmark"></i> Buang penapis</button>
+        </div>
+
+        <!-- Desktop Table -->
+        <div class="table-wrap view-table">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>ClassID</th>
+                <th>Nama Premis Kelas</th>
+                <th>Jenis</th>
+                <th>Parlimen</th>
+                <th>DUN</th>
+                <th>Status Bangunan</th>
+                <th>Status Tanah</th>
+              </tr>
+            </thead>
+            <tbody id="jadualKelasBody"></tbody>
+          </table>
+        </div>
+
+        <!-- Mobile Cards -->
+        <div id="kadKelasList" class="list-cards view-cards"></div>
+      </div>
+    </section>
+
+    <!-- MODUL STAFF -->
+    <section id="modul-staff" class="koms-section" style="display: none; flex-direction: column; gap: 14px;">
+      <!-- Banner Staf Tiada Kelas -->
+      <div class="appos-card" style="padding: 14px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; border-color: rgba(244,63,94,0.45); background: rgba(244,63,94,0.06);">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div class="hud-icon-box" style="background: rgba(244,63,94,0.15); color: var(--rose-accent);"><i class="fa-solid fa-user-slash"></i></div>
+          <div>
+            <span class="appos-text-muted" style="font-size: 9.5px; font-weight: 700; text-transform: uppercase; display: block;">Staf Tiada Penempatan Kelas</span>
+            <b class="font-mono" style="font-size: 18px; color: var(--text-main);"><span id="kpiStafTiadaKelas">—</span> staf</b>
+            <span class="appos-text-muted" style="font-size: 11px; display: block;">Belum dipadankan dalam StaffAssignments</span>
+          </div>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="btn-action" onclick="tapisStafTiadaKelas()" style="border-color: var(--rose-accent); color: var(--rose-accent);"><i class="fa-solid fa-filter"></i> Papar Staf Tiada Kelas</button>
+          <button type="button" class="btn-action" onclick="tapisStafSemua()">Semua Staf</button>
+        </div>
+      </div>
+
+      <div class="appos-card data-panel">
+        <div class="data-toolbar">
+          <div>
+            <h3 style="font-size: 14px; font-weight: 800; color: var(--accent-color); display: flex; align-items: center; gap: 8px;">
+              <i class="fa-solid fa-users"></i> Direktori Kakitangan Staf
+            </h3>
+            <p class="appos-text-muted" style="font-size: 11px;">
+              <span class="font-mono font-bold" id="staffCount" style="color:#fff;">0 rekod</span> • Klik mana-mana staf untuk butiran
+            </p>
+          </div>
+          <button onclick="bukaDaftarStaffBaharu()" class="btn-action btn-gold"><i class="fa-solid fa-user-plus"></i> Tambah Staf</button>
+        </div>
+
+        <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;">
+          <select id="filterStaffDiv" class="filter-select" onchange="applyStaffFilters()">
+            <option value="">Semua Bahagian</option>
+            <option value="PAK">PAK</option>
+            <option value="PKEM">PKEM</option>
+            <option value="PKOM">PKOM</option>
+          </select>
+          <select id="filterStaffRole" class="filter-select" onchange="applyStaffFilters()">
+            <option value="">Semua Jawatan</option>
+          </select>
+          <select id="filterStaffStatus" class="filter-select" onchange="applyStaffFilters()">
+            <option value="">Semua Status Lantikan</option>
+            <option value="Kontrak">Kontrak</option>
+            <option value="JSKT">JSKT</option>
+          </select>
+        </div>
+
+        <div class="table-wrap view-table">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>StaffID</th>
+                <th>Nama</th>
+                <th>Jawatan</th>
+                <th>Bahagian</th>
+                <th>Parlimen</th>
+                <th>Status Lantikan</th>
+              </tr>
+            </thead>
+            <tbody id="jadualStaffBody"></tbody>
+          </table>
+        </div>
+        <div id="kadStaffList" class="list-cards view-cards"></div>
+      </div>
+    </section>
+
+    <!-- MODUL PENUGASAN -->
+    <section id="modul-penugasan" class="koms-section" style="display: none; flex-direction: column; gap: 14px;">
+      <div class="appos-card data-panel">
+        <div class="data-toolbar">
+          <div>
+            <h3 style="font-size: 14px; font-weight: 800; color: var(--accent-color); display: flex; align-items: center; gap: 8px;">
+              <i class="fa-solid fa-link"></i> Penugasan Kakitangan ↔ Kelas Premis
+            </h3>
+            <p class="appos-text-muted" style="font-size: 11px;">Junction StaffAssignments • Status Aktif (TRUE) &amp; Tamat (FALSE)</p>
+          </div>
+          <button type="button" class="btn-action btn-gold" onclick="toggleFormPenugasan()"><i class="fa-solid fa-plus"></i> Tambah Penugasan</button>
+        </div>
+
+        <!-- Borang Tambah Penugasan -->
+        <div id="formPenugasan" class="appos-card-subtle hidden" style="padding: 14px; margin-bottom: 12px; display: flex; flex-direction: column; gap: 10px;">
+          <b style="color: var(--accent-color); font-size: 12px;">Daftar Penugasan Staf Baharu</b>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+            <select id="asgStaff" class="filter-select" style="min-width: 200px; flex: 1;"></select>
+            <select id="asgClass" class="filter-select" style="min-width: 220px; flex: 1;"></select>
+            <input id="asgPeranan" class="filter-select" placeholder="Peranan (cth: Pendidik Masyarakat)" style="min-width: 180px;">
+          </div>
+          <div style="display: flex; justify-content: flex-end; gap: 8px;">
+            <button type="button" class="btn-action" onclick="toggleFormPenugasan(false)">Batal</button>
+            <button type="button" class="btn-action btn-gold" onclick="simpanPenugasan()"><i class="fa-solid fa-floppy-disk"></i> Simpan Penugasan</button>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; margin-bottom: 10px;">
+          <div>
+            <label style="font-size: 9.5px; font-weight: 800; color: var(--emerald-accent); text-transform: uppercase; display: block; margin-bottom: 3px;"><i class="fa-solid fa-user"></i> Carian Nama Staff</label>
+            <input type="text" id="filterAsgStaffName" class="filter-select" placeholder="Taip nama staf..." style="width: 100%;" oninput="paparPenugasan()">
+          </div>
+          <div>
+            <label style="font-size: 9.5px; font-weight: 800; color: var(--blue-accent); text-transform: uppercase; display: block; margin-bottom: 3px;"><i class="fa-solid fa-school"></i> Carian Nama Kelas</label>
+            <input type="text" id="filterAsgClassName" class="filter-select" placeholder="Taip nama kelas..." style="width: 100%;" oninput="paparPenugasan()">
+          </div>
+          <div>
+            <label style="font-size: 9.5px; font-weight: 800; color: var(--accent-color); text-transform: uppercase; display: block; margin-bottom: 3px;">Status Penugasan</label>
+            <select id="filterAsgStatus" class="filter-select" style="width: 100%;" onchange="paparPenugasan()">
+              <option value="ACTIVE" selected>Aktif (TRUE)</option>
+              <option value="INACTIVE">Tidak Aktif (FALSE)</option>
+              <option value="ALL">Semua Rekod</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="senaraiPenugasan" style="display: flex; flex-direction: column; gap: 8px;"></div>
+      </div>
+    </section>
+
+    <!-- MODUL KEROSAKAN / ISU -->
+    <section id="modul-kerosakan" class="koms-section" style="display: none; flex-direction: column; gap: 14px;">
+      <div class="appos-card data-panel">
+        <div class="data-toolbar">
+          <div>
+            <h3 style="font-size: 14px; font-weight: 800; color: var(--accent-color); display: flex; align-items: center; gap: 8px;">
+              <i class="fa-solid fa-wrench"></i> Pengurusan Kerosakan &amp; Isu Premis
+            </h3>
+            <p class="appos-text-muted" style="font-size: 11px;">
+              Alur Kerja SSOT: <b style="color:var(--rose-accent);">Baharu</b> → <b style="color:var(--amber-accent);">Dalam Tindakan</b> → <b style="color:var(--blue-accent);">Sedang Dibaiki</b> → <b style="color:var(--emerald-accent);">Selesai</b>
+            </p>
+          </div>
+          <button type="button" class="btn-action btn-gold" onclick="toggleFormIsu(true)"><i class="fa-solid fa-plus"></i> Laporkan Isu Baharu</button>
+        </div>
+
+        <!-- Borang Tambah Isu -->
+        <div id="formIsu" class="appos-card-subtle hidden" style="padding: 14px; margin-bottom: 12px; display: flex; flex-direction: column; gap: 12px;">
+          <b style="color: var(--accent-color); font-size: 12px;">Laporan Kerosakan Baharu</b>
+          
+          <div class="filter-grid">
+            <div class="filter-group">
+              <div class="filter-group-label">1. Parlimen &amp; DUN</div>
+              <select id="isuFilterParlimen" class="filter-select" onchange="onIsuParlimenChange()">
+                <option value="P.001">P.001 Padang Besar</option>
+                <option value="P.002">P.002 Kangar</option>
+                <option value="P.003">P.003 Arau</option>
+              </select>
+              <select id="isuFilterDun" class="filter-select" onchange="onIsuFilterChange()">
+                <option value="">Semua DUN</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <div class="filter-group-label">2. Bahagian &amp; Jenis</div>
+              <select id="isuFilterDiv" class="filter-select" onchange="onIsuBahagianChange()">
+                <option value="">Semua Bahagian</option>
+                <option value="PAK">PAK</option>
+                <option value="PKEM">PKEM</option>
+                <option value="PKOM">PKOM</option>
+              </select>
+              <select id="isuFilterClassType" class="filter-select" onchange="onIsuFilterChange()">
+                <option value="">Semua Jenis Kelas</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="filter-group">
+            <div class="filter-group-label">3. Pilih Premis Kelas Terlibat *</div>
+            <select id="isuClass" class="filter-select" style="font-weight: 700;"></select>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div class="filter-group">
+              <div class="filter-group-label">Tahap Keterukan</div>
+              <select id="isuSeverity" class="filter-select">
+                <option value="Biasa">Biasa</option>
+                <option value="Penting">Penting</option>
+                <option value="Kritikal">Kritikal</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <div class="filter-group-label">Status Permulaan</div>
+              <input value="Baharu" readonly class="filter-select" style="opacity: 0.8; font-weight: bold;">
+            </div>
+          </div>
+
+          <div>
+            <div class="filter-group-label" style="margin-bottom: 6px;">Keterangan Isu / Kerosakan *</div>
+            <textarea id="isuDesc" class="form-textarea" placeholder="Terangkan butiran kerosakan secara terperinci..."></textarea>
+          </div>
+
+          <div>
+            <div class="filter-group-label" style="margin-bottom: 6px;">Gambar Isu 1 &amp; 2 (Laporan)</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <input type="file" id="isuImage1" accept="image/*" class="filter-select text-xs">
+              <input type="file" id="isuImage2" accept="image/*" class="filter-select text-xs">
+            </div>
+          </div>
+
+          <div style="display: flex; justify-content: flex-end; gap: 8px;">
+            <button type="button" class="btn-action" onclick="toggleFormIsu(false)">Batal</button>
+            <button type="button" class="btn-action btn-gold" onclick="simpanIsu()"><i class="fa-solid fa-floppy-disk"></i> Simpan Laporan</button>
+          </div>
+        </div>
+
+        <!-- Senarai Isu 4 Peringkat Berurutan -->
+        <div id="senaraiKerosakan" style="display: flex; flex-direction: column; gap: 14px;"></div>
+      </div>
+    </section>
+
+    <!-- MODUL PETA GIS -->
+    <section id="modul-peta" class="koms-section" style="display: none; flex-direction: column; gap: 14px;">
+      <div class="appos-card data-panel">
+        <div class="data-toolbar">
+          <div>
+            <h3 style="font-size: 14px; font-weight: 800; color: var(--accent-color); display: flex; align-items: center; gap: 8px;">
+              <i class="fa-solid fa-map-location-dot"></i> Pemetaan Spatial GIS Premis KEMAS Perlis
+            </h3>
+            <p class="appos-text-muted" style="font-size: 11px;">
+              <span class="font-mono font-bold" id="mapRekodCount" style="color:#fff;">0</span> premis dipetakan • Klik mana-mana pin untuk membuka dossier premis
+            </p>
+          </div>
+          <button onclick="resetPenapisPeta()" class="btn-action text-xs"><i class="fa-solid fa-rotate-left"></i> Reset Peta</button>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 10px;">
+          <select id="mapFilterParlimen" class="filter-select" onchange="onMapParlimenChange()">
+            <option value="">Semua Parlimen</option>
+            <option value="P.001">P.001 Padang Besar</option>
+            <option value="P.002">P.002 Kangar</option>
+            <option value="P.003">P.003 Arau</option>
+          </select>
+          <select id="mapFilterDun" class="filter-select" onchange="paparPetaLeaflet()">
+            <option value="">Semua DUN</option>
+          </select>
+        </div>
+
+        <!-- Map Legend Chips -->
+        <div id="petaLegend" class="map-type-chips" style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px;"></div>
+
+        <!-- Leaflet Map Canvas -->
+        <div id="petaCanvas" style="width: 100%; height: 480px; border-radius: 12px; overflow: hidden; border: 1px solid var(--border-color); background: #0a1628;"></div>
+
+        <!-- List below map -->
+        <div id="petaSenarai" style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- MOBILE BOTTOM BAR -->
+  <nav class="mobile-bottom-bar">
+    <button onclick="tukarModul('utama')" id="bnav-utama" class="bnav-item active"><i class="fa-solid fa-house"></i><span>Utama</span></button>
+    <button onclick="tukarModul('kelas')" id="bnav-kelas" class="bnav-item"><i class="fa-solid fa-school"></i><span>Kelas</span></button>
+    <button onclick="tukarModul('staff')" id="bnav-staff" class="bnav-item"><i class="fa-solid fa-users"></i><span>Staff</span></button>
+    <button onclick="tukarModul('penugasan')" id="bnav-penugasan" class="bnav-item"><i class="fa-solid fa-link"></i><span>Tugas</span></button>
+    <button onclick="tukarModul('kerosakan')" id="bnav-kerosakan" class="bnav-item"><i class="fa-solid fa-wrench"></i><span>Isu</span></button>
+    <button onclick="tukarModul('peta')" id="bnav-peta" class="bnav-item"><i class="fa-solid fa-map-location-dot"></i><span>Peta</span></button>
+  </nav>
+
+  <!-- DRAWER HAMBURGER -->
+  <div id="drawerHamburger" class="hidden">
+    <div onclick="toggleDrawer(false)" style="position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 99;"></div>
+    <div class="drawer-panel" style="z-index: 100;">
+      <div style="display: flex; flex-direction: column; gap: 14px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div class="logo-box" style="width: 32px; height: 32px; font-size: 14px;"><i class="fa-solid fa-graduation-cap"></i></div>
+            <div>
+              <b style="font-size: 12px; color: #fff; display: block;">Menu Konsol KOMS</b>
+              <span style="font-size: 9.5px; color: var(--accent-color); font-family: monospace;">Live Field Hub</span>
+            </div>
+          </div>
+          <button onclick="toggleDrawer(false)" style="background: none; border: none; color: #fff; font-size: 18px; cursor: pointer;"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <div class="appos-card-subtle" style="padding: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <b style="font-size: 11.5px; color: #fff;">Ku Ahmisuhairi Bin Ku Ahmad</b>
+            <span class="badge-status badge-live">LIVE</span>
+          </div>
+          <span class="appos-text-muted font-mono" style="font-size: 9.5px;">Sovereign Architect • MyGovUC</span>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <span style="font-size: 9.5px; text-transform: uppercase; font-weight: 700; color: var(--accent-color);">Pilihan Tema Visual (3):</span>
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;">
+            <button onclick="tukarTema('theme-dark')" class="btn-action" style="font-size: 10px; padding: 7px 4px; justify-content: center; background: #0B0F19; color: #fff;">🌙 Dark Mode</button>
+            <button onclick="tukarTema('theme-ocean')" class="btn-action" style="font-size: 10px; padding: 7px 4px; justify-content: center; background: #0A192F; color: #38BDF8;">🔷 Dark Blue</button>
+            <button onclick="tukarTema('theme-light')" class="btn-action" style="font-size: 10px; padding: 7px 4px; justify-content: center; background: #fff; color: #0F172A;">☀️ Minimalist</button>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <span style="font-size: 9.5px; text-transform: uppercase; font-weight: 700; color: var(--accent-color);">Navigasi Modul:</span>
+          <button onclick="tukarModul('utama'); toggleDrawer(false);" class="btn-action" style="justify-content: flex-start;"><i class="fa-solid fa-house" style="color: var(--blue-accent); width: 16px;"></i> Utama • Dashboard</button>
+          <button onclick="tukarModul('kelas'); toggleDrawer(false);" class="btn-action" style="justify-content: flex-start;"><i class="fa-solid fa-school" style="color: var(--blue-accent); width: 16px;"></i> Kelas • Premis SSOT</button>
+          <button onclick="tukarModul('staff'); toggleDrawer(false);" class="btn-action" style="justify-content: flex-start;"><i class="fa-solid fa-users" style="color: var(--emerald-accent); width: 16px;"></i> Staff • Direktori</button>
+          <button onclick="tukarModul('penugasan'); toggleDrawer(false);" class="btn-action" style="justify-content: flex-start;"><i class="fa-solid fa-link" style="color: var(--amber-accent); width: 16px;"></i> Penugasan Kakitangan</button>
+          <button onclick="tukarModul('kerosakan'); toggleDrawer(false);" class="btn-action" style="justify-content: flex-start;"><i class="fa-solid fa-wrench" style="color: var(--rose-accent); width: 16px;"></i> Kerosakan • 4 Peringkat</button>
+          <button onclick="tukarModul('peta'); toggleDrawer(false);" class="btn-action" style="justify-content: flex-start;"><i class="fa-solid fa-map-location-dot" style="color: var(--blue-accent); width: 16px;"></i> Peta GIS • 15 DUN</button>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--border-color); padding-top: 12px;">
+          <button onclick="eksportXLSX(); toggleDrawer(false);" class="btn-action btn-gold" style="justify-content: flex-start;">
+            <i class="fa-solid fa-file-excel" style="width: 16px;"></i> Eksport XLSX Penuh
+          </button>
+        </div>
+      </div>
+      <div style="border-top: 1px solid var(--border-color); padding-top: 10px; font-size: 9.5px; color: var(--text-muted); font-family: monospace;">
+        <p style="font-weight: 700; color: #fff;">KOMS v1.0 • Production Ready</p>
+        <p style="color: var(--accent-color);">Created by: AppOS • Ku Ahmisuhairi</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DOSSIER KELAS -->
+  <div id="modalKelas" class="modal-backdrop hidden" onclick="if(event.target===this) tutupModalKelas()">
+    <div class="modal-panel" role="dialog" aria-modal="true">
+      <div class="modal-head">
+        <div>
+          <span class="badge-status badge-live" id="modalKelasBadge">ClassID</span>
+          <h3 id="modalKelasTitle" style="font-size: 15px; font-weight: 800; color: var(--text-main); margin-top: 4px;">Dossier Kelas</h3>
+        </div>
+        <button type="button" class="modal-close" onclick="tutupModalKelas()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body" id="modalKelasBody"></div>
+    </div>
+  </div>
+
+  <!-- MODAL EDIT KELAS -->
+  <div id="modalEditKelas" class="modal-backdrop hidden" onclick="if(event.target===this) tutupModalEditKelas()">
+    <div class="modal-panel" role="dialog" style="max-width: 680px;">
+      <div class="modal-head">
+        <div>
+          <span class="badge-status badge-live">Edit Premis</span>
+          <h3 id="modalEditKelasTitle" style="font-size: 15px; font-weight: 800; color: var(--text-main); margin-top: 4px;">Kemaskini Data Premis</h3>
+        </div>
+        <button type="button" class="modal-close" onclick="tutupModalEditKelas()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body" id="modalEditKelasBody"></div>
+    </div>
+  </div>
+
+  <!-- MODAL DETAIL STAFF -->
+  <div id="modalStaff" class="modal-backdrop hidden" onclick="if(event.target===this) tutupModalStaff()">
+    <div class="modal-panel" role="dialog" aria-modal="true" style="max-width: 620px;">
+      <div class="modal-head">
+        <div>
+          <span class="badge-status badge-live" id="modalStaffBadge">StaffID</span>
+          <h3 id="modalStaffTitle" style="font-size: 15px; font-weight: 800; color: var(--text-main); margin-top: 4px;">Butiran Staf</h3>
+        </div>
+        <button type="button" class="modal-close" onclick="tutupModalStaff()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body" id="modalStaffBody"></div>
+    </div>
+  </div>
+
+  <!-- MODAL EDIT STAFF -->
+  <div id="modalEditStaff" class="modal-backdrop hidden" onclick="if(event.target===this) tutupModalEditStaff()">
+    <div class="modal-panel" role="dialog" style="max-width: 600px;">
+      <div class="modal-head">
+        <div>
+          <span class="badge-status badge-live">Edit Staf</span>
+          <h3 id="modalEditStaffTitle" style="font-size: 15px; font-weight: 800; color: var(--text-main); margin-top: 4px;">Kemaskini Maklumat Staf</h3>
+        </div>
+        <button type="button" class="modal-close" onclick="tutupModalEditStaff()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body" id="modalEditStaffBody"></div>
+    </div>
+  </div>
+
+  <!-- MODAL DETAIL ISU -->
+  <div id="modalIsu" class="modal-backdrop hidden" onclick="if(event.target===this) tutupModalIsu()">
+    <div class="modal-panel" role="dialog" aria-modal="true">
+      <div class="modal-head">
+        <div>
+          <span class="badge-status" id="modalIsuBadge" style="background: rgba(244,63,94,0.15); color: var(--rose-accent);">Isu</span>
+          <h3 id="modalIsuTitle" style="font-size: 15px; font-weight: 800; color: var(--text-main); margin-top: 4px;">Butiran Isu</h3>
+        </div>
+        <button type="button" class="modal-close" onclick="tutupModalIsu()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body" id="modalIsuBody"></div>
+    </div>
+  </div>
+
+  <!-- MODAL EDIT ISU & BUKTI SELESAI -->
+  <div id="modalEditIsu" class="modal-backdrop hidden" onclick="if(event.target===this) tutupModalEditIsu()">
+    <div class="modal-panel" role="dialog" style="max-width: 640px;">
+      <div class="modal-head">
+        <div>
+          <span class="badge-status" style="background: rgba(244,63,94,0.15); color: var(--rose-accent);">Isu Premis</span>
+          <h3 id="modalEditIsuTitle" style="font-size: 15px; font-weight: 800; color: var(--text-main); margin-top: 4px;">Kemaskini / Penutupan Isu</h3>
+        </div>
+        <button type="button" class="modal-close" onclick="tutupModalEditIsu()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body" id="modalEditIsuBody"></div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toastNotify">
+    <i class="fa-solid fa-circle-check" style="color: var(--emerald-accent); font-size: 16px;"></i>
+    <div>
+      <b id="toastTajuk" style="display: block; font-size: 11.5px;">KOMS Hub</b>
+      <span id="toastMesej" class="appos-text-muted" style="font-size: 10.5px;">Tindakan berjaya.</span>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer>
+    <div style="max-width: 1280px; margin: 0 auto; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px;">
+      <span class="font-mono">KOD INTEGRITI: SHA256-KOMS-CLASS-MANAGEMENT-SSOT-2026</span>
+      <span style="font-weight: 700; color: var(--accent-color);">KOMS • Created by: AppOS • Ku Ahmisuhairi</span>
+    </div>
+  </footer>
+
+  <!--KOMS_INCLUDE_JS-->
+</body>
+</html>

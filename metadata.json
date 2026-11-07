@@ -1,0 +1,6 @@
+{
+  "name": "KOMS — KEMAS Operative Management System",
+  "description": "Sistem Pengurusan Operasi KEMAS Perlis (AppOS Live Field Hub) untuk pemantauan 266 premis kelas, direktori staf, penugasan, isu kerosakan, dan pemetaan GIS spatial.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
